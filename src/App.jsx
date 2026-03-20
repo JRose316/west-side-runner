@@ -319,6 +319,19 @@ function StepperPicker({label,value,items,onChange}){
   );
 }
 
+// ─── Toggle ────────────────────────────────────────────────────────────────────
+function Toggle({val,label,sub,onToggle}){
+  const T=useT();
+  return(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
+      <div><div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>{sub&&<div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{sub}</div>}</div>
+      <div onClick={onToggle} style={{width:46,height:26,borderRadius:13,background:val?T.green:T.border2,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,minWidth:46}}>
+        <div style={{position:"absolute",top:3,left:val?22:3,width:20,height:20,borderRadius:"50%",background:val?T.bg:T.muted,transition:"left .2s"}}/>
+      </div>
+    </div>
+  );
+}
+
 // ─── Settings Panel (bottom sheet) ────────────────────────────────────────────
 function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   const T=useT();
@@ -328,14 +341,7 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   const dur=runH>0?`${runH}h ${runRem}m`:`${runM}m`;
   const distVal=`${loc.distance} mi`;
   const paceVal=paceToStr(loc.pace);
-  const Toggle=({val,label,sub,onToggle})=>(
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
-      <div><div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>{sub&&<div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{sub}</div>}</div>
-      <div onClick={onToggle} style={{width:46,height:26,borderRadius:13,background:val?T.green:T.border2,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,minWidth:46}}>
-        <div style={{position:"absolute",top:3,left:val?22:3,width:20,height:20,borderRadius:"50%",background:val?T.bg:T.muted,transition:"left .2s"}}/>
-      </div>
-    </div>
-  );
+
   return(
     <div style={{position:"fixed",inset:0,zIndex:100}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>

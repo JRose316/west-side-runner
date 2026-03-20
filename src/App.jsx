@@ -76,7 +76,7 @@ async function fetchLiveWeather(lat, lon, apiKey) {
   };
   const fmtL = (d) => d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const td = buildDay(todayStr), tm = buildDay(tomStr);
-  return { isLive: true, source: "tomorrow.io", today: { label: fmtL(now), hours: td.hrs, windDeg: td.windDeg, sunTimes: getSun(todayStr) }, tomorrow: { label: fmtL(tom), hours: tm.hrs, windDeg: tm.windDeg, sunTimes: getSun(tomStr) } };
+  return { isLive: true, source: "tomorrow.io", fetchedAt: Date.now(), today: { label: fmtL(now), hours: td.hrs, windDeg: td.windDeg, sunTimes: getSun(todayStr) }, tomorrow: { label: fmtL(tom), hours: tm.hrs, windDeg: tm.windDeg, sunTimes: getSun(tomStr) } };
 }
 
 async function getLocationName(lat, lon) {
@@ -122,6 +122,8 @@ function processHours(arr) {
   const hours = arr.map(h => { const s = scoreHour(h); return { ...h, score: s.total, bd: s.bd }; });
   let best = null;
   for (let i = 0; i < hours.length - 1; i++) { const avg = Math.round((hours[i].score + hours[i + 1].score) / 2); if (!best || avg > best.avgScore) best = { startIdx: i, avgScore: avg }; }
+  // If best window is truly terrible, show the bad day screen instead
+  if (best && best.avgScore < 35) best = null;
   return { hours, best };
 }
 
@@ -176,6 +178,40 @@ async function doShare(bh, best, dateLabel, locationName) {
     await navigator.clipboard.writeText(text); return "copied";
   } catch (e) { if (e.name !== "AbortError") { try { await navigator.clipboard.writeText(text); return "copied"; } catch {} } return null; }
 }
+
+
+// ─── Why This Window? ──────────────────────────────────────────────────────────
+function getWhyExplainer(bh, best) {
+  const reasons = [];
+  if (bh.p <= 10) reasons.push("no rain in the forecast");
+  else if (bh.p <= 25) reasons.push(`only ${bh.p}% chance of rain`);
+  if (bh.w <= 7) reasons.push("wind is barely noticeable");
+  else if (bh.w <= 12) reasons.push(`light ${bh.w} mph breeze`);
+  const feel = bh.t > 50 || bh.w < 3 ? bh.t : Math.round(35.74 + 0.6215*bh.t - 35.75*Math.pow(bh.w,0.16) + 0.4275*bh.t*Math.pow(bh.w,0.16));
+  if (feel >= 55 && feel <= 70) reasons.push(`${feel}°F feels perfect for running`);
+  else if (feel >= 48 && feel < 55) reasons.push(`crisp ${feel}°F — ideal race-day feel`);
+  else if (feel > 70 && feel <= 78) reasons.push(`${feel}°F is warm but manageable`);
+  if ((bh.aqi || 40) <= 50) reasons.push("air quality is excellent");
+  if ((bh.pollen || 0) <= 20) reasons.push("pollen is low");
+  if (bh.u <= 3) reasons.push("UV is minimal");
+  if (reasons.length === 0) {
+    if (best.avgScore >= 65) reasons.push("conditions are decent across the board");
+    else reasons.push("this is the best window available today");
+  }
+  const top = reasons.slice(0, 3);
+  if (top.length === 1) return `${top[0].charAt(0).toUpperCase() + top[0].slice(1)}.`;
+  if (top.length === 2) return `${top[0].charAt(0).toUpperCase() + top[0].slice(1)} and ${top[1]}.`;
+  return `${top[0].charAt(0).toUpperCase() + top[0].slice(1)}, ${top[1]}, and ${top[2]}.`;
+}
+
+// ─── Bad Day Messages ──────────────────────────────────────────────────────────
+const BAD_DAY_MSGS = [
+  { emoji:"🛋️", title:"Take a day off.", sub:"You've earned it." },
+  { emoji:"☕", title:"Rest day confirmed.", sub:"Your legs will thank you tomorrow." },
+  { emoji:"🧘", title:"Nature says no.", sub:"Stretch, hydrate, try again tomorrow." },
+  { emoji:"📚", title:"A great day to not run.", sub:"Seriously. Stay inside. Read something." },
+  { emoji:"🍕", title:"Rest day protocol activated.", sub:"Treat yourself. The miles will be there tomorrow." },
+];
 
 // ─── Design ────────────────────────────────────────────────────────────────────
 const C = { bg:"#050c08", surface:"#08120a", surface2:"#0d1a10", border:"#142018", border2:"#1e3024", green:"#3dd68c", greenMid:"#2aab6e", greenDim:"#165c38", greenDeep:"#0a3320", text:"#c8e8d0", muted:"#4a7a58", dim:"#1e3828", great:"#3dd68c", good:"#a8e060", fair:"#f0c040", skip:"#e05858" };
@@ -235,6 +271,26 @@ function Dots() {
   const [v, setV] = useState(".");
   useEffect(() => { const t = setInterval(() => setV(p => p.length >= 3 ? "." : p + "."), 500); return () => clearInterval(t); }, []);
   return <span style={{ ...mono, color:C.greenDeep, fontSize:22 }}>{v}</span>;
+}
+
+
+// ─── PWA Install Banner ────────────────────────────────────────────────────────
+function PWABanner({ onDismiss }) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone || (!isIOS && !isAndroid)) return null;
+  const msg = isIOS ? "Tap Share then 'Add to Home Screen'" : "Tap Menu then 'Add to Home Screen'";
+  return (
+    <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:200, padding:"12px 16px", background:C.surface, borderTop:`1px solid ${C.border2}`, display:"flex", alignItems:"center", gap:12, boxShadow:"0 -4px 24px rgba(0,0,0,0.4)" }}>
+      <div style={{ fontSize:22, flexShrink:0 }}>📲</div>
+      <div style={{ flex:1 }}>
+        <div style={{ ...mono, fontSize:10, color:C.text, letterSpacing:0.5 }}>Add to your home screen</div>
+        <div style={{ ...mono, fontSize:8, color:C.muted, marginTop:2 }}>{msg} for daily forecasts</div>
+      </div>
+      <button onClick={onDismiss} style={{ ...mono, fontSize:9, color:C.muted, background:"none", border:`1px solid ${C.border2}`, borderRadius:6, padding:"6px 12px", cursor:"pointer", flexShrink:0, letterSpacing:1 }}>Dismiss</button>
+    </div>
+  );
 }
 
 // ─── Location Screen ───────────────────────────────────────────────────────────
@@ -326,6 +382,9 @@ export default function App() {
   const [shareMsg, setShareMsg] = useState(null);
   const [visible, setVisible] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [showPWA, setShowPWA] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [touchStartY, setTouchStartY] = useState(null);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -339,6 +398,33 @@ export default function App() {
     } catch {}
     setPhase("location");
   }, []);
+
+  // PWA banner — show once per session
+  useEffect(() => {
+    if (phase === "ready") {
+      const dismissed = sessionStorage.getItem("pwa_dismissed");
+      if (!dismissed) setTimeout(() => setShowPWA(true), 3000);
+    }
+  }, [phase]);
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = useCallback((e) => {
+    if (window.scrollY === 0) setTouchStartY(e.touches[0].clientY);
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStartY === null) return;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    setTouchStartY(null);
+    if (dy > 72 && !refreshing) {
+      setRefreshing(true);
+      const key = settings.apiKey || DEFAULT_SETTINGS.apiKey;
+      fetchLiveWeather(location?.lat || DEFAULT_LOC.lat, location?.lon || DEFAULT_LOC.lon, key)
+        .then(data => { setWeather({ ...data, fetchedAt: Date.now() }); })
+        .catch(() => {})
+        .finally(() => { setRefreshing(false); setVisible(false); setTimeout(() => setVisible(true), 60); });
+    }
+  }, [touchStartY, refreshing, settings, location]);
 
   const loadWeather = useCallback(async (loc, apiKey) => {
     setPhase("loading"); setLoadError("");
@@ -409,7 +495,11 @@ export default function App() {
   const outfit = bh ? getOutfit(bh) : null;
 
   return (
-    <div style={{ ...bg, minHeight:"100vh", position:"relative", overflow:"hidden" }}>
+    <div style={{ ...bg, minHeight:"100vh", position:"relative", overflow:"hidden" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}>
+      {refreshing && <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:200, textAlign:"center", padding:"10px", background:C.surface, borderBottom:`1px solid ${C.border2}`, ...mono, fontSize:9, color:C.green, letterSpacing:2 }}>↻ REFRESHING FORECAST...</div>}
+      {showPWA && phase==="ready" && <PWABanner onDismiss={() => { setShowPWA(false); try { sessionStorage.setItem("pwa_dismissed","1"); } catch {} }}/>}
       <WeatherBg hours={hours}/>
       {showSettings && <SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={() => setShowSettings(false)} onResetLocation={handleResetLocation}/>}
       <div style={{ position:"relative", zIndex:1, maxWidth:520, margin:"0 auto", padding:"36px 20px 64px" }}>
@@ -420,7 +510,10 @@ export default function App() {
             <div>
               <div style={{ ...mono, fontSize:8, color:C.greenDim, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{location?.name||"Upper West Side, NYC"}</div>
               <div style={{ ...cond, fontSize:36, fontWeight:700, color:C.text, letterSpacing:5, textTransform:"uppercase", lineHeight:1 }}>Run Forecast</div>
-              <div style={{ ...mono, fontSize:8, color:weather.isLive?C.greenMid:C.dim, marginTop:5, letterSpacing:1 }}>{weather.isLive?"● Live · Tomorrow.io":"◌ Seasonal estimate"}</div>
+              <div style={{ ...mono, fontSize:8, color:weather.isLive?C.greenMid:C.dim, marginTop:5, letterSpacing:1 }}>
+                {weather.isLive?"● Live · Tomorrow.io":"◌ Seasonal estimate"}
+                {weather.fetchedAt && <span style={{ color:C.dim, marginLeft:8 }}>· Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
+              </div>
             </div>
             <button onClick={() => setShowSettings(true)} style={{ ...mono, fontSize:9, color:C.muted, background:"none", border:`1px solid ${C.border2}`, borderRadius:6, padding:"6px 12px", cursor:"pointer", letterSpacing:1, marginTop:4 }}>⚙ Settings</button>
           </div>
@@ -447,8 +540,10 @@ export default function App() {
                 </div>
                 <div style={{ flex:1, minWidth:130 }}>
                   <div style={{ ...mono, fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Best Window</div>
-                  <div style={{ ...serif, fontSize:52, fontWeight:300, color:C.text, lineHeight:0.9, letterSpacing:-1 }}>{fmt12(bh.hr)}</div>
-                  <div style={{ ...mono, fontSize:11, color:C.greenDim, marginTop:6, letterSpacing:1 }}>— {fmt12(bh.hr+2)}</div>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
+                    <div style={{ ...serif, fontSize:46, fontWeight:300, color:C.text, lineHeight:0.95, letterSpacing:-1 }}>{fmt12(bh.hr)}</div>
+                    <div style={{ ...serif, fontSize:22, fontWeight:300, color:C.greenDim, lineHeight:1, letterSpacing:0 }}>– {fmt12(bh.hr+2)}</div>
+                  </div>
                   <div style={{ ...mono, fontSize:9, color:C.muted, marginTop:8 }}>Back by ~{retStr} · {settings.distance}mi</div>
                   <div style={{ marginTop:12, display:"flex", flexWrap:"wrap", gap:6 }}>
                     {[{icon:"🌡",val:`${bh.t}°F`},{icon:"🌧",val:`${bh.p}%`},{icon:"💨",val:`${bh.w}mph`}].map(({icon,val}) => <span key={val} className="chip" style={{ ...mono, fontSize:10, color:C.text, background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:6, padding:"4px 10px", display:"inline-flex", alignItems:"center", gap:5 }}>{icon} {val}</span>)}
@@ -465,6 +560,16 @@ export default function App() {
                   return <div key={key} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}><div style={{ fontSize:11, width:18, flexShrink:0 }}>{icon}</div><div style={{ ...mono, fontSize:9, color:C.muted, width:74, letterSpacing:1, flexShrink:0 }}>{label}</div><div style={{ flex:1, background:C.surface2, borderRadius:2, height:3, overflow:"hidden" }}><div style={{ width:visible?`${sv}%`:"0%", height:"100%", background:`linear-gradient(90deg,${C.greenDeep},${fc})`, borderRadius:2, boxShadow:`0 0 8px ${fc}50`, transition:"width 1.1s cubic-bezier(0.4,0,0.2,1)", transitionDelay:`${300+fi*70}ms` }}/></div><div style={{ ...mono, fontSize:9, color:fc, width:22, textAlign:"right", fontWeight:500 }}>{sv}</div><div style={{ ...mono, fontSize:8, color:C.dim, width:30, textAlign:"right" }}>{w}%</div></div>;
                 })}
               </div>
+              {/* Why this window */}
+              {(() => { const why = getWhyExplainer(bh, best); return (
+                <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"flex-start", gap:10 }}>
+                  <span style={{ color:col, fontSize:14, flexShrink:0, marginTop:1 }}>💬</span>
+                  <div>
+                    <div style={{ ...mono, fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:5 }}>Why this window?</div>
+                    <div style={{ ...mono, fontSize:10, color:C.text, lineHeight:1.7 }}>{why}</div>
+                  </div>
+                </div>
+              ); })()}
               {/* Share */}
               <div style={{ marginTop:18, paddingTop:16, borderTop:`1px solid ${C.border}`, display:"flex", gap:10, alignItems:"center" }}>
                 <button onClick={async () => { const r = await doShare(bh, best, dayData.label, location?.name||"NYC"); if (r) { setShareMsg(r==="copied"?"Copied to clipboard!":"Shared! 🎉"); setTimeout(() => setShareMsg(null), 2500); } }} style={{ ...mono, fontSize:10, color:C.green, background:`${C.green}15`, border:`1px solid ${C.green}40`, borderRadius:8, padding:"9px 18px", cursor:"pointer", letterSpacing:1, flex:1, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>📤 Share this forecast</button>
@@ -474,6 +579,22 @@ export default function App() {
           </div>
         )}
 
+        {/* Bad day card */}
+        {!bh && hours.length > 0 && (() => {
+          const msg = BAD_DAY_MSGS[new Date().getDate() % BAD_DAY_MSGS.length];
+          const worstScore = Math.max(...hours.map(h=>h.score));
+          return (
+            <div className={`fade ${visible?"in":""}`} style={{ ...dd(120), marginBottom:16 }}>
+              <div style={{ background:C.surface, borderRadius:20, border:`1px solid ${C.border2}`, padding:"40px 28px", textAlign:"center", position:"relative", overflow:"hidden" }}>
+                <div style={{ position:"absolute", top:0, left:0, right:0, height:1, background:`linear-gradient(90deg,transparent,${C.skip}40,transparent)` }}/>
+                <div style={{ fontSize:56, marginBottom:16 }}>{msg.emoji}</div>
+                <div style={{ ...cond, fontSize:32, fontWeight:700, color:C.text, letterSpacing:3, textTransform:"uppercase", lineHeight:1, marginBottom:8 }}>{msg.title}</div>
+                <div style={{ ...mono, fontSize:11, color:C.muted, lineHeight:1.8, marginBottom:20 }}>{msg.sub}</div>
+                <div style={{ ...mono, fontSize:9, color:C.dim, lineHeight:1.8 }}>Best score today: <span style={{ color:C.skip }}>{worstScore}/100</span> — conditions are rough across the board.</div>
+              </div>
+            </div>
+          );
+        })()}
         {/* Direction */}
         {bh && (
           <div className={`fade ${visible?"in":""}`} style={{ ...dd(210), marginBottom:16 }}>

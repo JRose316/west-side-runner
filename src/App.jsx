@@ -366,13 +366,13 @@ function StepperPicker({label,value,items,onChange}){
   const idx=items.indexOf(value);
   const dec=()=>{if(idx>0)onChange(items[idx-1]);};
   const inc=()=>{if(idx<items.length-1)onChange(items[idx+1]);};
-  const btnStyle=disabled=>({...mono,fontSize:20,color:disabled?T.dim:T.green,background:"none",border:`1px solid ${disabled?T.border:T.border2}`,borderRadius:8,width:44,height:44,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
+  const btnStyle=disabled=>({...mono,fontSize:18,color:disabled?T.dim:T.green,background:"none",border:`1px solid ${disabled?T.border:T.border2}`,borderRadius:7,width:36,height:36,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
   return(
     <div>
-      <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>{label}</div>
-      <div style={{display:"flex",alignItems:"center",gap:10,background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"10px 14px"}}>
+      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"7px 10px"}}>
         <button onClick={dec} disabled={idx<=0} style={btnStyle(idx<=0)}>−</button>
-        <div style={{flex:1,textAlign:"center"}}><div style={{...cond,fontSize:26,fontWeight:700,color:T.green,letterSpacing:1,lineHeight:1}}>{value}</div></div>
+        <div style={{flex:1,textAlign:"center"}}><div style={{...cond,fontSize:20,fontWeight:700,color:T.green,letterSpacing:1,lineHeight:1}}>{value}</div></div>
         <button onClick={inc} disabled={idx>=items.length-1} style={btnStyle(idx>=items.length-1)}>+</button>
       </div>
     </div>
@@ -383,7 +383,7 @@ function StepperPicker({label,value,items,onChange}){
 function Toggle({val,label,sub,onToggle}){
   const T=useT();
   return(
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
       <div><div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>{sub&&<div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{sub}</div>}</div>
       <div onClick={onToggle} style={{width:46,height:26,borderRadius:13,background:val?T.green:T.border2,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,minWidth:46}}>
         <div style={{position:"absolute",top:3,left:val?22:3,width:20,height:20,borderRadius:"50%",background:val?T.bg:T.muted,transition:"left .2s"}}/>
@@ -409,42 +409,48 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
         <div style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8}}>
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 24px 16px",borderBottom:`1px solid ${T.border}`}}>
-          <div style={{...cond,fontSize:26,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
-          <button onClick={onClose} style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:18,color:T.muted,flexShrink:0}}>✕</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 20px 12px",borderBottom:`1px solid ${T.border}`}}>
+          <div style={{...cond,fontSize:22,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
+          <button onClick={onClose} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:16,color:T.muted,flexShrink:0}}>✕</button>
         </div>
-        <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
-          <div style={{paddingBottom:16,borderBottom:`1px solid ${T.border}`}}>
-            <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Location</div>
-            <div style={{...mono,fontSize:12,color:T.text,marginBottom:10}}>{locationName}</div>
-            <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:7,padding:"8px 16px",cursor:"pointer",letterSpacing:1}}>📍 Change Location</button>
+        <div style={{padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{paddingBottom:10,borderBottom:`1px solid ${T.border}`}}>
+            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Location</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{...mono,fontSize:11,color:T.text}}>{locationName}</div>
+              <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:9,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"5px 10px",cursor:"pointer",letterSpacing:1,flexShrink:0}}>📍 Change</button>
+            </div>
           </div>
           <StepperPicker label="Run Distance" value={distVal} items={DIST_ITEMS} onChange={v=>setLoc(l=>({...l,distance:parseFloat(v.replace(" mi",""))}))}/>
           <StepperPicker label="Pace" value={paceVal} items={PACE_ITEMS} onChange={v=>setLoc(l=>({...l,pace:paceFromStr(v)}))}/>
-          <div style={{background:T.surface2,borderRadius:10,padding:"14px 16px",border:`1px solid ${T.border}`}}>
-            <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1,marginBottom:6}}>Estimated run time</div>
-            <div style={{...cond,fontSize:30,fontWeight:700,color:T.green,letterSpacing:2}}>{dur}</div>
-            <div style={{...mono,fontSize:9,color:T.dim,marginTop:4}}>{loc.distance} mi at {paceToStr(loc.pace)}</div>
+          <div style={{background:T.surface2,borderRadius:9,padding:"10px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1}}>Est. run time</div>
+            <div style={{textAlign:"right"}}>
+              <span style={{...cond,fontSize:22,fontWeight:700,color:T.green,letterSpacing:1}}>{dur}</span>
+              <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{loc.distance} mi · {paceToStr(loc.pace)}</div>
+            </div>
           </div>
           <Toggle val={loc.daylightOnly} label="Daylight runs only" sub="Exclude windows after sunset" onToggle={()=>setLoc(l=>({...l,daylightOnly:!l.daylightOnly}))}/>
-          <div style={{padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Theme</div>
-            <div style={{display:"flex",gap:6}}>
+          <div style={{padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>Theme</div>
+              <div style={{...mono,fontSize:8,color:T.dim}}>Auto = sunrise & sunset</div>
+            </div>
+            <div style={{display:"flex",gap:5}}>
               {[{id:"auto",label:"☀️→🌙 Auto"},{id:"light",label:"☀️ Light"},{id:"dark",label:"🌙 Dark"}].map(({id,label})=>(
-                <button key={id} onClick={()=>setLoc(l=>({...l,theme:id}))} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:10,letterSpacing:0.5,transition:"all .15s"}}>
+                <button key={id} onClick={()=>setLoc(l=>({...l,theme:id}))} style={{flex:1,padding:"7px 0",borderRadius:7,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:9,letterSpacing:0.5,transition:"all .15s"}}>
                   {label}
                 </button>
               ))}
             </div>
-            <div style={{...mono,fontSize:9,color:T.dim,marginTop:8}}>Auto switches at sunrise & sunset</div>
           </div>
-          <div style={{padding:"12px 0"}}>
-            <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Temperature</div>
-            <div style={{display:"inline-flex",gap:4,background:T.surface2,borderRadius:8,padding:4,border:`1px solid ${T.border2}`}}>
-              {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"9px 26px",borderRadius:6,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:12,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0"}}>
+            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>Temperature</div>
+            <div style={{display:"inline-flex",gap:3,background:T.surface2,borderRadius:7,padding:3,border:`1px solid ${T.border2}`}}>
+              {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"6px 20px",borderRadius:5,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:11,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
             </div>
           </div>
-          <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"14px 24px",cursor:"pointer",letterSpacing:1.5,width:"100%"}}>Save</button>
+          <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:9,padding:"12px 24px",cursor:"pointer",letterSpacing:1.5,width:"100%"}}>Save</button>
         </div>
       </div>
     </div>

@@ -541,8 +541,7 @@ export default function App() {
                 <div style={{ flex:1, minWidth:130 }}>
                   <div style={{ ...mono, fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Best Window</div>
                   <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
-                    <div style={{ ...serif, fontSize:46, fontWeight:300, color:C.text, lineHeight:0.95, letterSpacing:-1 }}>{fmt12(bh.hr)}</div>
-                    <div style={{ ...serif, fontSize:22, fontWeight:300, color:C.greenDim, lineHeight:1, letterSpacing:0 }}>– {fmt12(bh.hr+2)}</div>
+                    <div style={{ ...serif, fontSize:46, fontWeight:300, color:C.text, lineHeight:0.95, letterSpacing:-1 }}>{fmt12(bh.hr)} – {fmt12(bh.hr+2)}</div>
                   </div>
                   <div style={{ ...mono, fontSize:9, color:C.muted, marginTop:8 }}>Back by ~{retStr} · {settings.distance}mi</div>
                   <div style={{ marginTop:12, display:"flex", flexWrap:"wrap", gap:6 }}>

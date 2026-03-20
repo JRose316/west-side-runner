@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#08120a"/>
-  <circle cx="16" cy="7" r="3" fill="#3dd68c"/>
-  <path d="M16 10 L13 18 L10 24 M16 10 L19 18 L22 24 M13 18 L19 18" 
-        stroke="#3dd68c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="115" fill="#050c08"/>
+  <text x="256" y="210" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#5a8a68" letter-spacing="6">temp</text>
+  <text x="256" y="330" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-style="italic" font-size="168" fill="#3dd68c" letter-spacing="-2">RUN</text>
+  <text x="256" y="410" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#5a8a68" letter-spacing="6">ture</text>
 </svg>

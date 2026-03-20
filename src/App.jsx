@@ -280,22 +280,82 @@ function PWABanner({onDismiss}){
 function LocationScreen({onGrant,onSkip}){
   const T=useT();
   const [asking,setAsking]=useState(false);
+  const [denied,setDenied]=useState(false);
   const hasGeo=!!navigator.geolocation;
   const handleGrant=()=>{
-    setAsking(true);
-    navigator.geolocation.getCurrentPosition(pos=>onGrant(pos.coords.latitude,pos.coords.longitude),()=>{setAsking(false);onSkip();},{timeout:12000,enableHighAccuracy:false});
+    setAsking(true);setDenied(false);
+    navigator.geolocation.getCurrentPosition(
+      pos=>onGrant(pos.coords.latitude,pos.coords.longitude),
+      (err)=>{
+        setAsking(false);
+        if(err.code===1)setDenied(true); // permission denied
+        else onSkip();
+      },
+      {timeout:12000,enableHighAccuracy:false}
+    );
   };
+  const features=[
+    {icon:"⏰",label:"Best window",desc:"Scores every hour 5am–9pm so you know exactly when to lace up"},
+    {icon:"🌡",label:"7-factor scoring",desc:"Rain, wind, temp, AQI, pollen, humidity & UV — weighted by impact"},
+    {icon:"👕",label:"Outfit picker",desc:"Tells you exactly what to wear based on feels-like temperature"},
+    {icon:"🧭",label:"Start direction",desc:"Which way to run first based on wind so you earn the tailwind home"},
+    {icon:"💚",label:"Air quality",desc:"AQI & pollen counts factored into your score — big for allergy season"},
+  ];
   return(
-    <div style={{background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"40px 24px",textAlign:"center"}}>
-      <div style={{fontSize:52,marginBottom:20}}>🏃</div>
-      <div style={{display:"flex",alignItems:"baseline",marginBottom:12}}>
-        <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-        <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
-        <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
+    <div style={{background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text,minHeight:"100vh",overflowY:"auto"}}>
+      {/* Hero */}
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"56px 24px 40px",textAlign:"center",maxWidth:480,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"baseline",marginBottom:10}}>
+          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
+          <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
+          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
+        </div>
+        <div style={{...cond,fontSize:22,fontWeight:600,color:T.text,letterSpacing:1,marginBottom:12,lineHeight:1.3}}>Know exactly when to run.<br/>Before you even check the weather.</div>
+        <div style={{...mono,fontSize:10,color:T.muted,lineHeight:1.9,maxWidth:320,marginBottom:36}}>
+          tempRUNture scores every hour of the day based on 7 live weather factors and tells you your perfect run window — with what to wear, which direction to start, and why.
+        </div>
+        {denied&&(
+          <div style={{background:`${T.skip}15`,border:`1px solid ${T.skip}40`,borderRadius:10,padding:"12px 16px",marginBottom:16,maxWidth:320,width:"100%"}}>
+            <div style={{...mono,fontSize:10,color:T.skip,letterSpacing:1,marginBottom:4}}>Location access was denied</div>
+            <div style={{...mono,fontSize:9,color:T.muted,lineHeight:1.7}}>To allow it: go to your browser settings → Site permissions → Location → Allow for temprunture.com. Or tap below to use NYC instead.</div>
+          </div>
+        )}
+        {hasGeo&&(
+          <button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"15px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:14,opacity:asking?0.7:1,width:"100%",maxWidth:300,fontWeight:500}}>
+            {asking?"Locating you...":"📍 Get My Run Forecast"}
+          </button>
+        )}
+        <button onClick={onSkip} style={{...mono,fontSize:10,color:T.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:1,textDecoration:"underline",marginBottom:8}}>
+          {hasGeo?"Use New York City instead":"Continue with New York City"}
+        </button>
+        <div style={{...mono,fontSize:8,color:T.dim,marginTop:4}}>📍 Location is only used to fetch your local forecast. Never stored.</div>
       </div>
-      <div style={{...mono,fontSize:11,color:T.muted,marginBottom:40,lineHeight:1.9,maxWidth:300}}>Live scored run windows with outfit picks, wind direction, air quality & pollen.</div>
-      {hasGeo&&<button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"14px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:16,opacity:asking?0.7:1,width:"100%",maxWidth:280}}>{asking?"Locating you...":"📍 Use My Location"}</button>}
-      <button onClick={onSkip} style={{...mono,fontSize:11,color:T.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:1,textDecoration:"underline"}}>{hasGeo?"Use New York City instead":"Continue with New York City"}</button>
+
+      {/* Feature list */}
+      <div style={{maxWidth:480,margin:"0 auto",padding:"0 24px 24px"}}>
+        <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:3,textTransform:"uppercase",textAlign:"center",marginBottom:20}}>What's inside</div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {features.map(({icon,label,desc})=>(
+            <div key={label} style={{display:"flex",gap:14,alignItems:"flex-start",background:T.surface,borderRadius:12,padding:"14px 16px",border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{icon}</div>
+              <div>
+                <div style={{...mono,fontSize:11,color:T.green,fontWeight:500,marginBottom:4}}>{label}</div>
+                <div style={{...mono,fontSize:9,color:T.muted,lineHeight:1.7}}>{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer CTA */}
+      <div style={{maxWidth:480,margin:"0 auto",padding:"16px 24px 56px",textAlign:"center"}}>
+        <div style={{...mono,fontSize:9,color:T.dim,letterSpacing:1,lineHeight:1.8}}>Free · No account needed · Works anywhere in the world</div>
+        {hasGeo&&(
+          <button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"13px 32px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginTop:16,opacity:asking?0.7:1}}>
+            {asking?"Locating you...":"📍 Get My Run Forecast"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -345,8 +405,8 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   return(
     <div style={{position:"fixed",inset:0,zIndex:100}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
-      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:40}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"env(safe-area-inset-top, 14px) 0 6px",paddingTop:"max(14px, env(safe-area-inset-top))"}}>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:"max(40px, calc(env(safe-area-inset-bottom) + 24px))"}}>
+        <div style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8}}>
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 24px 16px",borderBottom:`1px solid ${T.border}`}}>
@@ -405,6 +465,7 @@ export default function App(){
   const [showPWA,setShowPWA]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [touchStartY,setTouchStartY]=useState(null);
+  const [feedback,setFeedback]=useState(null); // 'up' | 'down' | null
 
   // Theme
   const isDark=useMemo(()=>{
@@ -511,10 +572,22 @@ export default function App(){
   if(phase==="location")return<ThemeCtx.Provider value={T}><LocationScreen onGrant={handleGrant} onSkip={handleSkip}/></ThemeCtx.Provider>;
   if(phase==="error")return(
     <ThemeCtx.Provider value={T}>
-      <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:16,textAlign:"center",padding:32}}>
-        <div style={{fontSize:36}}>⚠️</div>
-        <div style={{...cond,fontSize:24,color:T.skip,letterSpacing:2}}>Weather fetch failed</div>
-        <div style={{...mono,fontSize:11,color:T.muted,maxWidth:300,lineHeight:1.8}}>{loadError}</div>
+      <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:0,textAlign:"center",padding:32}}>
+        <div style={{fontSize:44,marginBottom:16}}>🌧️</div>
+        <div style={{...cond,fontSize:26,color:T.text,letterSpacing:2,marginBottom:10}}>Couldn't load the forecast</div>
+        <div style={{...mono,fontSize:11,color:T.muted,maxWidth:300,lineHeight:1.9,marginBottom:24}}>{loadError}</div>
+        <button onClick={()=>loadWeather(location||DEFAULT_LOC,settings.apiKey||DEFAULT_SETTINGS.apiKey)}
+          style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"13px 32px",cursor:"pointer",letterSpacing:1.5,marginBottom:14}}>
+          Try again
+        </button>
+        <button onClick={()=>{
+          const now=new Date(),tom=new Date(now);tom.setDate(now.getDate()+1);
+          setWeather({isLive:false,today:makeFallbackDay(now),tomorrow:makeFallbackDay(tom)});
+          setPhase("ready");setTimeout(()=>setVisible(true),60);
+        }} style={{...mono,fontSize:10,color:T.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",letterSpacing:1}}>
+          Use seasonal estimates instead
+        </button>
+        <div style={{...mono,fontSize:8,color:T.dim,marginTop:20,maxWidth:260,lineHeight:1.8}}>Seasonal estimates are based on historical averages for your time of year — less precise but still useful.</div>
       </div>
     </ThemeCtx.Provider>
   );
@@ -541,7 +614,7 @@ export default function App(){
         {showPWA&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
         {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
 
-        <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"36px 20px 64px"}}>
+        <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"max(56px, calc(env(safe-area-inset-top) + 24px)) 20px 64px"}}>
 
           {/* Header */}
           <div className={`fade ${visible?"in":""}`} style={{marginBottom:28,...dd(0)}}>
@@ -563,7 +636,7 @@ export default function App(){
             <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>{dayData.label.toUpperCase()}</div>
             <div style={{display:"inline-flex",gap:2,marginTop:14,background:T.surface,borderRadius:8,padding:3,border:`1px solid ${T.border2}`}}>
               {[{id:"today",label:"Today"},{id:"tomorrow",label:"Tomorrow"}].map(({id,label})=>(
-                <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setTimeout(()=>setVisible(true),40);}}
+                <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setFeedback(null);setTimeout(()=>setVisible(true),40);}}
                   style={{padding:"8px 22px",borderRadius:6,border:"none",cursor:"pointer",background:view===id?T.green:"transparent",color:view===id?T.bg:T.muted,...mono,fontSize:11,fontWeight:view===id?500:300,letterSpacing:1.5,textTransform:"uppercase"}}>{label}
                 </button>
               ))}
@@ -651,6 +724,24 @@ export default function App(){
                 <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",gap:10,alignItems:"center"}}>
                   <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
                   {shareMsg&&<div style={{...mono,fontSize:10,color:T.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Feedback card */}
+          {bh&&(
+            <div className={`fade ${visible?"in":""}`} style={{...dd(140),marginBottom:16}}>
+              <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"18px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1}}>Was this forecast helpful?</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  {feedback&&<div style={{...mono,fontSize:9,color:T.green,marginRight:4}}>{feedback==="up"?"Thanks! 🎉":"Got it, thanks"}</div>}
+                  {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
+                    <button key={v} onClick={()=>setFeedback(f=>f===v?null:v)}
+                      style={{fontSize:20,background:feedback===v?`${T.green}20`:"none",border:`1px solid ${feedback===v?T.green:T.border2}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",transition:"all .15s",lineHeight:1}}>
+                      {e}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

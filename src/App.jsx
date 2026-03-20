@@ -915,25 +915,37 @@ export default function App(){
             ))}
           </div>
 
-          {/* About footer */}
-          <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:32,paddingTop:24,borderTop:`1px solid ${T.border}`}}>
-            <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",marginBottom:12}}>
+          {/* About footer — visually subtle, content-rich for SEO */}
+          <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:40,paddingTop:28,borderTop:`1px solid ${T.border}`,opacity:0.7}}>
+            <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",marginBottom:16}}>
               <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
               <span style={{...cond,fontSize:22,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,margin:"0 2px",textTransform:"uppercase",lineHeight:1}}>RUN</span>
               <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
             </div>
-            <div style={{...mono,fontSize:9,color:T.dim,textAlign:"center",lineHeight:1.9,maxWidth:340,margin:"0 auto",marginBottom:16}}>
-              Built for runners who want to run smarter, not just harder. tempRUNture scores every hour of the day across 7 weather factors so you always know your best window — wherever you are in the world.
+
+            {/* SEO-rich description paragraphs — small and dim so real users skip past them */}
+            <div style={{maxWidth:360,margin:"0 auto",display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
+                tempRUNture is a free running weather forecast app that scores every hour of the day based on seven factors: rain probability, wind speed, temperature, air quality index (AQI), pollen count, humidity, and UV index. It tells you the best time to run today and tomorrow — with a score out of 100, an outfit recommendation, and advice on which direction to start based on wind.
+              </p>
+              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
+                Unlike a standard weather app, tempRUNture is built specifically for runners. It weighs each weather factor by how much it actually affects a run, calculates a wind chill-adjusted feels-like temperature, and factors in local air quality and pollen data from Open-Meteo. It works for runners anywhere in the world — just share your location and get an instant forecast.
+              </p>
+              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
+                Common questions it answers: What is the best time to run today? Is it too windy to run outside? What should I wear for my run? Is air quality good enough to run? What is the pollen count for running today? When is the coolest time to run?
+              </p>
             </div>
-            <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
-              {[{label:"Free forever",icon:"✓"},{label:"Works anywhere",icon:"🌍"},{label:"No account needed",icon:"✓"},{label:"Live weather data",icon:"⚡"}].map(({label,icon})=>(
+
+            <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
+              {[{label:"Free forever",icon:"✓"},{label:"Works anywhere",icon:"🌍"},{label:"No account needed",icon:"✓"},{label:"Live weather data",icon:"⚡"},{label:"Air quality & pollen",icon:"💚"}].map(({label,icon})=>(
                 <div key={label} style={{...mono,fontSize:8,color:T.muted,letterSpacing:0.5,display:"flex",alignItems:"center",gap:4}}>
                   <span style={{color:T.green}}>{icon}</span>{label}
                 </div>
               ))}
             </div>
-            <div style={{...mono,fontSize:8,color:T.dim,textAlign:"center",marginTop:20,opacity:0.5,letterSpacing:1}}>
-              © {new Date().getFullYear()} temprunture.com
+
+            <div style={{...mono,fontSize:7,color:T.dim,textAlign:"center",opacity:0.5,letterSpacing:1}}>
+              © {new Date().getFullYear()} temprunture.com · Free running weather forecast
             </div>
           </div>
   

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 // ─── Weights & Config ──────────────────────────────────────────────────────────
 const W = { precipitation:0.28, wind:0.20, temperature:0.18, humidity:0.08, uv:0.06, aqi:0.15, pollen:0.05 };
 const DEFAULT_LOC = { lat:40.794, lon:-73.9916, name:"Upper West Side, NYC" };
-const DEFAULT_SETTINGS = { distance:5, pace:9, apiKey:"" };
+const DEFAULT_SETTINGS = { distance:5, pace:9, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV" };
 
 // ─── Seasonal Fallback ─────────────────────────────────────────────────────────
 const SEA = {
@@ -308,14 +308,7 @@ function SettingsPanel({ settings, locationName, onSave, onClose, onResetLocatio
           <div style={{ ...cond, fontSize:28, fontWeight:700, color:C.green, letterSpacing:2 }}>{dur}</div>
           <div style={{ ...mono, fontSize:9, color:C.dim, marginTop:4 }}>{loc.distance} mi at {loc.pace}:00/mi</div>
         </div>
-        <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:20 }}>
-          <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>Tomorrow.io API Key</div>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <input type={showKey?"text":"password"} value={loc.apiKey||""} onChange={e => setLoc(l => ({...l, apiKey:e.target.value}))} placeholder="Paste key here" style={{ ...mono, fontSize:10, color:C.text, background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:6, padding:"8px 12px", flex:1, outline:"none" }}/>
-            <button onClick={() => setShowKey(v => !v)} style={{ ...mono, fontSize:9, color:C.muted, background:"none", border:`1px solid ${C.border2}`, borderRadius:6, padding:"8px 10px", cursor:"pointer" }}>{showKey?"👁":"👁‍🗨"}</button>
-          </div>
-          <div style={{ ...mono, fontSize:8, color:C.dim, marginTop:6, lineHeight:1.6 }}>Free key at tomorrow.io → Development → API Keys</div>
-        </div>
+
         <button onClick={() => { onSave(loc); onClose(); }} style={{ ...mono, fontSize:11, color:C.bg, background:C.green, border:"none", borderRadius:8, padding:"12px 24px", cursor:"pointer", letterSpacing:1.5 }}>Save</button>
       </div>
     </div>
@@ -342,7 +335,7 @@ export default function App() {
       const sLoc = JSON.parse(localStorage.getItem("wsr_loc") || "null");
       const sSett = JSON.parse(localStorage.getItem("wsr_settings") || "null");
       if (sSett) setSettings(sSett);
-      if (sLoc) { setLocation(sLoc); if (!sSett?.apiKey) { setPhase("apikey"); return; } loadWeather(sLoc, sSett.apiKey); return; }
+      if (sLoc) { setLocation(sLoc); loadWeather(sLoc, sSett?.apiKey || DEFAULT_SETTINGS.apiKey); return; }
     } catch {}
     setPhase("location");
   }, []);
@@ -370,15 +363,13 @@ export default function App() {
     setLocation(loc);
     try { localStorage.setItem("wsr_loc", JSON.stringify(loc)); } catch {}
     const saved = (() => { try { return JSON.parse(localStorage.getItem("wsr_settings") || "null"); } catch { return null; } })();
-    if (!saved?.apiKey) { setPhase("apikey"); return; }
-    loadWeather(loc, saved.apiKey);
+    loadWeather(loc, saved?.apiKey || DEFAULT_SETTINGS.apiKey);
   }, [loadWeather]);
 
   const handleSkip = useCallback(() => {
     setLocation(DEFAULT_LOC);
     const saved = (() => { try { return JSON.parse(localStorage.getItem("wsr_settings") || "null"); } catch { return null; } })();
-    if (!saved?.apiKey) { setPhase("apikey"); return; }
-    loadWeather(DEFAULT_LOC, saved.apiKey);
+    loadWeather(DEFAULT_LOC, saved?.apiKey || DEFAULT_SETTINGS.apiKey);
   }, [loadWeather]);
 
   const handleApiKey = useCallback((key) => {
@@ -401,7 +392,7 @@ export default function App() {
 
   if (phase === "init" || phase === "loading") return <div style={{ ...bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:14, textAlign:"center", padding:20 }}><div style={{ ...cond, fontSize:28, color:C.green, letterSpacing:3 }}>LOADING FORECAST</div><div style={{ ...mono, fontSize:10, color:C.muted, letterSpacing:1 }}>{location?.name || "Fetching weather..."}</div><Dots/><div style={{ ...mono, fontSize:9, color:C.dim, marginTop:4 }}>Pulling live data from Tomorrow.io</div></div>;
   if (phase === "location") return <LocationScreen onGrant={handleGrant} onSkip={handleSkip}/>;
-  if (phase === "apikey") return <ApiKeyScreen onSave={handleApiKey}/>;
+
   if (phase === "error") return <div style={{ ...bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", gap:16, textAlign:"center", padding:32 }}><div style={{ fontSize:36 }}>⚠️</div><div style={{ ...cond, fontSize:22, color:C.skip, letterSpacing:2 }}>Weather fetch failed</div><div style={{ ...mono, fontSize:10, color:C.muted, maxWidth:300, lineHeight:1.8 }}>{loadError}</div><button onClick={() => setPhase("apikey")} style={{ ...mono, fontSize:10, color:C.bg, background:C.green, border:"none", borderRadius:8, padding:"11px 28px", cursor:"pointer", letterSpacing:1.5, marginTop:8 }}>Update API Key</button></div>;
   if (!weather) return null;
 

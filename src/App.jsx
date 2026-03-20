@@ -402,11 +402,29 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   const distVal=`${loc.distance} mi`;
   const paceVal=paceToStr(loc.pace);
 
+  // Lock background scroll while open
+  useEffect(()=>{
+    const prev=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    return()=>{ document.body.style.overflow=prev; };
+  },[]);
+
   return(
     <div style={{position:"fixed",inset:0,zIndex:100}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
-      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:"max(40px, calc(env(safe-area-inset-bottom) + 24px))"}}>
-        <div style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8}}>
+      <div
+        style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:"max(40px, calc(env(safe-area-inset-bottom) + 24px))"}}
+        onTouchStart={e=>e.stopPropagation()}
+        onTouchEnd={e=>e.stopPropagation()}
+        onTouchMove={e=>e.stopPropagation()}
+      >
+        <div
+          style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8,cursor:"pointer"}}
+          onTouchStart={e=>{ e._startY=e.touches[0].clientY; }}
+          onTouchEnd={e=>{ if(e.changedTouches[0].clientY - (e._startY||e.changedTouches[0].clientY) > 60) onClose(); }}
+          onMouseDown={e=>{ const sy=e.clientY; const up=ev=>{ if(ev.clientY-sy>60){onClose();} document.removeEventListener("mouseup",up); }; document.addEventListener("mouseup",up); }}
+          onClick={onClose}
+        >
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 20px 12px",borderBottom:`1px solid ${T.border}`}}>

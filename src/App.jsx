@@ -418,15 +418,7 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
         onTouchEnd={e=>e.stopPropagation()}
         onTouchMove={e=>e.stopPropagation()}
       >
-        <div
-          style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8,cursor:"pointer"}}
-          onTouchStart={e=>{ e._startY=e.touches[0].clientY; }}
-          onTouchEnd={e=>{ if(e.changedTouches[0].clientY - (e._startY||e.changedTouches[0].clientY) > 60) onClose(); }}
-          onMouseDown={e=>{ const sy=e.clientY; const up=ev=>{ if(ev.clientY-sy>60){onClose();} document.removeEventListener("mouseup",up); }; document.addEventListener("mouseup",up); }}
-          onClick={onClose}
-        >
-          <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
-        </div>
+        <div style={{height:8}}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 20px 12px",borderBottom:`1px solid ${T.border}`}}>
           <div style={{...cond,fontSize:22,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
           <button onClick={onClose} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:16,color:T.muted,flexShrink:0}}>✕</button>
@@ -489,6 +481,7 @@ export default function App(){
   const [showPWA,setShowPWA]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [touchStartY,setTouchStartY]=useState(null);
+  const [pullDist,setPullDist]=useState(0);
   const [feedback,setFeedback]=useState(null); // 'up' | 'down' | null
 
   // Theme
@@ -521,7 +514,7 @@ export default function App(){
 
   useEffect(()=>{
     const style=document.createElement("style");
-    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.3);}::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{border-radius:2px;}`;
+    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html,body{overscroll-behavior-y:none;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.3);}::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{border-radius:2px;}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}@keyframes pullFade{0%{opacity:0;transform:translateY(-20px)}100%{opacity:1;transform:translateY(0)}}`;
     document.head.appendChild(style);
     try{
       const sLoc=JSON.parse(localStorage.getItem("wsr_loc")||"null");
@@ -541,9 +534,16 @@ export default function App(){
   },[phase]);
 
   const handleTouchStart=useCallback((e)=>{if(window.scrollY===0)setTouchStartY(e.touches[0].clientY);},[]);
+  const handleTouchMove=useCallback((e)=>{
+    if(touchStartY===null||refreshing)return;
+    const dy=e.touches[0].clientY-touchStartY;
+    if(dy>0&&window.scrollY===0)setPullDist(Math.min(dy,120));
+    else setPullDist(0);
+  },[touchStartY,refreshing]);
   const handleTouchEnd=useCallback((e)=>{
     if(touchStartY===null)return;
     const dy=e.changedTouches[0].clientY-touchStartY;setTouchStartY(null);
+    setPullDist(0);
     if(dy>72&&!refreshing){
       setRefreshing(true);
       const key=settings.apiKey||DEFAULT_SETTINGS.apiKey;
@@ -632,9 +632,18 @@ export default function App(){
 
   return(
     <ThemeCtx.Provider value={T}>
-      <div style={{...bgStyle,minHeight:"100vh",position:"relative",overflow:"hidden"}} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div style={{...bgStyle,minHeight:"100vh",position:"relative",overflow:"hidden"}} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
         <WeatherBg hours={hours}/>
-        {refreshing&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,textAlign:"center",padding:"10px",background:T.surface,borderBottom:`1px solid ${T.border2}`,...mono,fontSize:10,color:T.green,letterSpacing:2}}>↻ REFRESHING...</div>}
+        {/* Pull indicator — shows while pulling, then spins while refreshing */}
+        {(pullDist>10||refreshing)&&(
+          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,display:"flex",justifyContent:"center",paddingTop:`max(${Math.min(pullDist*0.4+8, 20)}px, env(safe-area-inset-top))`,pointerEvents:"none",animation:refreshing?"pullFade 0.2s ease":"none"}}>
+            <div style={{background:T.surface,border:`1px solid ${T.border2}`,borderRadius:24,padding:"8px 18px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",opacity:refreshing?1:Math.min(pullDist/72,1)}}>
+              <div style={{width:16,height:16,border:`2px solid ${T.border2}`,borderTopColor:T.green,borderRadius:"50%",animation:refreshing?"spin 0.7s linear infinite":"none",transform:refreshing?"none":`rotate(${pullDist*3}deg)`,transition:refreshing?"none":"transform 0.05s"}}>
+              </div>
+              <div style={{...mono,fontSize:9,color:T.green,letterSpacing:2}}>{refreshing?"UPDATING FORECAST...":pullDist>72?"RELEASE TO REFRESH":"PULL TO REFRESH"}</div>
+            </div>
+          </div>
+        )}
         {showPWA&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
         {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
 

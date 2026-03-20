@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // ─── Weights & Config ──────────────────────────────────────────────────────────
 const W = { precipitation:0.28, wind:0.20, temperature:0.18, humidity:0.08, uv:0.06, aqi:0.15, pollen:0.05 };
@@ -339,111 +339,35 @@ function ApiKeyScreen({ onSave }) {
 }
 
 
-const DIST_ITEMS = Array.from({length:26}, (_,i) => `${i+1} mi`);
-const PACE_ITEMS = Array.from({length:11}, (_,i) => `${i+5}:00 /mi`);
-
-// ─── Wheel Picker (iOS drum roll style) ───────────────────────────────────────
-function WheelPicker({ items, value, onChange, width = 80 }) {
-  const ITEM_H = 36;
-  const VISIBLE = 5;
-  const containerH = ITEM_H * VISIBLE;
-  const [offset, setOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startY = useRef(null);
-  const startOffset = useRef(0);
-  const velRef = useRef(0);
-  const lastY = useRef(null);
-  const lastT = useRef(null);
-  const rafRef = useRef(null);
-
-  const selectedIdx = items.indexOf(value);
-
-  // Snap offset to nearest item
-  const snapTo = useCallback((idx) => {
-    const clamped = Math.max(0, Math.min(items.length - 1, idx));
-    setOffset(-clamped * ITEM_H);
-    onChange(items[clamped]);
-  }, [items, onChange]);
-
-  // Initialize position when value changes externally
-  useEffect(() => {
-    if (!dragging) setOffset(-selectedIdx * ITEM_H);
-  }, [value, selectedIdx, dragging]);
-
-  const getIdxFromOffset = (off) => Math.round(-off / ITEM_H);
-
-  const onPointerDown = (e) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    cancelAnimationFrame(rafRef.current);
-    setDragging(true);
-    startY.current = e.clientY;
-    startOffset.current = offset;
-    lastY.current = e.clientY;
-    lastT.current = Date.now();
-    velRef.current = 0;
-  };
-
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const dy = e.clientY - startY.current;
-    const now = Date.now(), dt = now - lastT.current;
-    if (dt > 0) velRef.current = (e.clientY - lastY.current) / dt;
-    lastY.current = e.clientY;
-    lastT.current = now;
-    const raw = startOffset.current + dy;
-    const min = -(items.length - 1) * ITEM_H, max = 0;
-    // rubber-band at edges
-    const clamped = raw < min ? min + (raw - min) * 0.2 : raw > max ? max + (raw - max) * 0.2 : raw;
-    setOffset(clamped);
-  };
-
-  const onPointerUp = () => {
-    if (!dragging) return;
-    setDragging(false);
-    // Momentum scroll
-    let vel = velRef.current * 80;
-    let currentOffset = offset;
-    const decay = 0.85;
-    const animate = () => {
-      vel *= decay;
-      currentOffset += vel;
-      const min = -(items.length - 1) * ITEM_H, max = 0;
-      currentOffset = Math.max(min, Math.min(max, currentOffset));
-      setOffset(currentOffset);
-      if (Math.abs(vel) > 0.5) {
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        snapTo(getIdxFromOffset(currentOffset));
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-  };
-
+// ─── Stepper Picker ───────────────────────────────────────────────────────────
+function StepperPicker({ label, value, items, onChange }) {
+  const idx = items.indexOf(value);
+  const dec = () => { if (idx > 0) onChange(items[idx - 1]); };
+  const inc = () => { if (idx < items.length - 1) onChange(items[idx + 1]); };
+  const btnStyle = (disabled) => ({
+    ...mono, fontSize:18, color: disabled ? C.dim : C.green,
+    background:"none", border:`1px solid ${disabled ? C.border : C.border2}`,
+    borderRadius:8, width:38, height:38, cursor: disabled ? "default" : "pointer",
+    display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+    transition:"all .15s",
+  });
   return (
-    <div style={{ width, height:containerH, overflow:"hidden", position:"relative", cursor:"grab", userSelect:"none", touchAction:"none" }}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      {/* Selection highlight */}
-      <div style={{ position:"absolute", top:"50%", left:0, right:0, height:ITEM_H, transform:"translateY(-50%)", background:`${C.green}18`, borderTop:`1px solid ${C.green}40`, borderBottom:`1px solid ${C.green}40`, borderRadius:6, pointerEvents:"none", zIndex:2 }}/>
-      {/* Fade top */}
-      <div style={{ position:"absolute", top:0, left:0, right:0, height:ITEM_H*1.5, background:`linear-gradient(180deg,${C.surface},transparent)`, pointerEvents:"none", zIndex:3 }}/>
-      {/* Fade bottom */}
-      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:ITEM_H*1.5, background:`linear-gradient(0deg,${C.surface},transparent)`, pointerEvents:"none", zIndex:3 }}/>
-      {/* Items */}
-      <div style={{ position:"absolute", top: containerH/2 - ITEM_H/2, left:0, right:0, transform:`translateY(${offset}px)`, transition: dragging ? "none" : "transform 0.18s cubic-bezier(0.25,0.46,0.45,0.94)" }}>
-        {items.map((item, i) => {
-          const dist = Math.abs(i - getIdxFromOffset(offset));
-          const isSelected = item === value;
-          return (
-            <div key={item} onClick={() => snapTo(i)}
-              style={{ height:ITEM_H, display:"flex", alignItems:"center", justifyContent:"center", ...mono, fontSize: dist === 0 ? 15 : dist === 1 ? 13 : 11, color: isSelected ? C.green : dist === 1 ? C.muted : C.dim, fontWeight: isSelected ? 500 : 300, letterSpacing:1, transition:"font-size .15s, color .15s" }}>
-              {item}
-            </div>
-          );
-        })}
+    <div>
+      <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>{label}</div>
+      <div style={{ display:"flex", alignItems:"center", gap:10, background:C.surface2, borderRadius:10, border:`1px solid ${C.border2}`, padding:"10px 14px" }}>
+        <button onClick={dec} disabled={idx <= 0} style={btnStyle(idx <= 0)}>−</button>
+        <div style={{ flex:1, textAlign:"center" }}>
+          <div style={{ ...cond, fontSize:26, fontWeight:700, color:C.green, letterSpacing:1, lineHeight:1 }}>{value}</div>
+        </div>
+        <button onClick={inc} disabled={idx >= items.length - 1} style={btnStyle(idx >= items.length - 1)}>+</button>
       </div>
     </div>
   );
 }
+
+const DIST_ITEMS = Array.from({length:26}, (_,i) => `${i+1} mi`);
+const PACE_ITEMS = ["5:00 /mi","5:30 /mi","6:00 /mi","6:30 /mi","7:00 /mi","7:30 /mi","8:00 /mi","8:30 /mi","9:00 /mi","9:30 /mi","10:00 /mi","10:30 /mi","11:00 /mi","11:30 /mi","12:00 /mi","13:00 /mi","14:00 /mi","15:00 /mi"];
+
 
 // ─── Settings Panel ────────────────────────────────────────────────────────────
 function SettingsPanel({ settings, locationName, onSave, onClose, onResetLocation }) {
@@ -463,14 +387,8 @@ function SettingsPanel({ settings, locationName, onSave, onClose, onResetLocatio
           <div style={{ ...mono, fontSize:11, color:C.text, marginBottom:10 }}>{locationName}</div>
           <button onClick={() => { onResetLocation(); onClose(); }} style={{ ...mono, fontSize:9, color:C.muted, background:"none", border:`1px solid ${C.border2}`, borderRadius:6, padding:"6px 14px", cursor:"pointer", letterSpacing:1 }}>📍 Change Location</button>
         </div>
-        <div>
-          <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:10 }}>Run Distance & Pace</div>
-          <div style={{ display:"flex", gap:8, alignItems:"center", background:C.surface2, borderRadius:12, border:`1px solid ${C.border2}`, padding:"8px 12px" }}>
-            <WheelPicker items={DIST_ITEMS} value={`${loc.distance} mi`} onChange={v => setLoc(l => ({...l, distance:parseInt(v)}))} width={110}/>
-            <div style={{ ...mono, fontSize:18, color:C.dim, flexShrink:0 }}>@</div>
-            <WheelPicker items={PACE_ITEMS} value={`${loc.pace}:00 /mi`} onChange={v => setLoc(l => ({...l, pace:parseInt(v)}))} width={110}/>
-          </div>
-        </div>
+        <StepperPicker label="Run Distance" value={`${loc.distance} mi`} items={DIST_ITEMS} onChange={v => setLoc(l => ({...l, distance:parseInt(v)}))}/>
+        <StepperPicker label="Pace" value={PACE_ITEMS.find(p => p.startsWith(`${loc.pace}:`)) || `${loc.pace}:00 /mi`} items={PACE_ITEMS} onChange={v => setLoc(l => ({...l, pace:parseInt(v)}))}/>
         <div style={{ background:C.surface2, borderRadius:10, padding:"14px 16px", border:`1px solid ${C.border}` }}>
           <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:1, marginBottom:6 }}>Estimated run time</div>
           <div style={{ ...cond, fontSize:28, fontWeight:700, color:C.green, letterSpacing:2 }}>{dur}</div>

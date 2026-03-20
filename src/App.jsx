@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
 
-// ─── Theme system ──────────────────────────────────────────────────────────────
+// ─── Themes ────────────────────────────────────────────────────────────────────
 const DARK = {
   bg:"#050c08", surface:"#08120a", surface2:"#0d1a10",
   border:"#142018", border2:"#1e3024",
   green:"#3dd68c", greenMid:"#2aab6e", greenDim:"#165c38", greenDeep:"#0a3320",
   text:"#c8e8d0", muted:"#5a8a68", dim:"#1e3828",
   great:"#3dd68c", good:"#a8e060", fair:"#f0c040", skip:"#e05858",
-  bodyBg:"#050c08",
 };
 const LIGHT = {
   bg:"#f4efe6", surface:"#ece6da", surface2:"#e2dbd0",
@@ -15,7 +14,6 @@ const LIGHT = {
   green:"#1a7a4a", greenMid:"#156038", greenDim:"#0d4228", greenDeep:"#dff0e8",
   text:"#1a2820", muted:"#4a6850", dim:"#9aaa98",
   great:"#1a7a4a", good:"#5a8010", fair:"#b06808", skip:"#c03030",
-  bodyBg:"#f4efe6",
 };
 const ThemeCtx = createContext(DARK);
 const useT = () => useContext(ThemeCtx);
@@ -31,23 +29,22 @@ const sl  = s => s>=80?"PERFECT":s>=65?"GOOD":s>=45?"FAIR":"SKIP IT";
 const mono  = { fontFamily:"'JetBrains Mono',monospace" };
 const serif  = { fontFamily:"'Cormorant Garamond',serif" };
 const cond  = { fontFamily:"'Barlow Condensed',sans-serif" };
-const aqiLabel  = v => v<=50?{l:"Good",k:"great"}:v<=100?{l:"Moderate",k:"good"}:v<=150?{l:"Sensitive",k:"fair"}:{l:"Unhealthy",k:"skip"};
-const polLabel  = v => v<=0?{l:"None",k:"great"}:v<=30?{l:"Low",k:"good"}:v<=100?{l:"Medium",k:"fair"}:{l:"High",k:"skip"};
-const lc = (label,T) => T[aqiLabel(0).k]; // unused but kept
+const aqiLabel = v => v<=50?{l:"Good",k:"great"}:v<=100?{l:"Moderate",k:"good"}:v<=150?{l:"Sensitive",k:"fair"}:{l:"Unhealthy",k:"skip"};
+const polLabel = v => v<=0?{l:"None",k:"great"}:v<=30?{l:"Low",k:"good"}:v<=100?{l:"Medium",k:"fair"}:{l:"High",k:"skip"};
 const aqC = (v,T) => T[aqiLabel(v).k];
 const polC = (v,T) => T[polLabel(v).k];
 const fmt12 = h => h===0||h===24?"12am":h<12?`${h}am`:h===12?"12pm":`${h-12}pm`;
 const compassLabel = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 const windChill = (t,w) => t>50||w<3?t:Math.round(35.74+0.6215*t-35.75*Math.pow(w,0.16)+0.4275*t*Math.pow(w,0.16));
 const toC = f => Math.round((f-32)*5/9);
-const displayTemp = (f,unit) => unit==="C"?`${toC(f)}\u00b0C`:`${f}\u00b0F`;
+const displayTemp = (f,unit) => unit==="C"?`${toC(f)}°C`:`${f}°F`;
 const dd = ms => ({ transitionDelay:`${ms}ms` });
 const paceToStr = secs => `${Math.floor(secs/60)}:${String(secs%60).padStart(2,"0")} /mi`;
 const paceFromStr = s => { const p=s.replace(" /mi","").split(":"); return parseInt(p[0])*60+parseInt(p[1]); };
 
-// ─── Dist / Pace item lists ────────────────────────────────────────────────────
-const DIST_ITEMS = Array.from({length:104},(_,i)=>{const d=(i+1)*0.25; return `${d} mi`;});
-const PACE_ITEMS = Array.from({length:61},(_,i)=>{const s=300+i*10; return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")} /mi`;});
+// ─── Dist / Pace lists ─────────────────────────────────────────────────────────
+const DIST_ITEMS = Array.from({length:104},(_,i) => `${((i+1)*0.25).toFixed(2).replace(/\.00$/,"").replace(/\.50$/,".5").replace(/\.25$/,".25").replace(/\.75$/,".75")} mi`);
+const PACE_ITEMS = Array.from({length:61},(_,i) => { const s=300+i*10; return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")} /mi`; });
 
 // ─── Seasonal fallback ─────────────────────────────────────────────────────────
 const SEA = {
@@ -87,7 +84,7 @@ function makeFallbackDay(date){
   return{label:fmtL(date),hours,windDeg:wd,sunTimes:{sunrise:sunrises[mo],sunset:sunsets[mo]}};
 }
 
-// ─── Live weather fetch ────────────────────────────────────────────────────────
+// ─── Live weather ──────────────────────────────────────────────────────────────
 async function fetchLiveWeather(lat,lon,apiKey){
   if(!apiKey)throw new Error("No API key");
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone,tzEnc=encodeURIComponent(tz);
@@ -111,7 +108,8 @@ async function fetchLiveWeather(lat,lon,apiKey){
   return{isLive:true,fetchedAt:Date.now(),today:{label:fmtL(now),hours:td.hrs,windDeg:td.windDeg,sunTimes:getSun(todayStr)},tomorrow:{label:fmtL(tom),hours:tm.hrs,windDeg:tm.windDeg,sunTimes:getSun(tomStr)}};
 }
 async function getLocationName(lat,lon){
-  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12`,{headers:{"Accept-Language":"en"}});const d=await r.json(),a=d.address;return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}\u00b0N`;}catch{return `${lat.toFixed(2)}\u00b0N`;}
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12`,{headers:{"Accept-Language":"en"}});const d=await r.json(),a=d.address;return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}°N`;}
+  catch{return `${lat.toFixed(2)}°N`;}
 }
 
 // ─── Scoring ───────────────────────────────────────────────────────────────────
@@ -135,37 +133,37 @@ function processHours(arr,sunTimes,daylightOnly){
 
 // ─── Direction ─────────────────────────────────────────────────────────────────
 function getDirRec(wd,ws){
-  if(ws<6)return{headline:"Wind is calm",detail:"Conditions are calm \u2014 start in whatever direction suits your route."};
+  if(ws<6)return{headline:"Wind is calm",detail:"Conditions are calm — start in whatever direction suits your route."};
   const label=compassLabel(wd),returnLabel=compassLabel((wd+180)%360);
-  return{headline:`Head ${label} first`,detail:`Run into the ${label} headwind while your legs are fresh \u2014 you\u2019ll earn that tailwind boost on the way back ${returnLabel}.`};
+  return{headline:`Head ${label} first`,detail:`Run into the ${label} headwind while your legs are fresh — you'll earn that tailwind boost on the way back ${returnLabel}.`};
 }
 
 // ─── Outfit ────────────────────────────────────────────────────────────────────
 function getOutfit(h){
   const feel=windChill(h.t,h.w),rainy=h.p>40,misty=h.p>20&&h.p<=40,uvHigh=h.u>6,windy=h.w>15;
   const L=[];
-  if(feel<=25)L.push({slot:"Top",icon:"\uD83E\uDDE5",item:"Heavy insulated jacket",note:"windproof shell essential"});
-  else if(feel<=35)L.push({slot:"Top",icon:"\uD83E\uDDE5",item:"Thermal running jacket",note:"full zip, wind resistant"});
-  else if(feel<=45)L.push({slot:"Top",icon:"\uD83E\uDE99",item:"Half-zip + base layer",note:"moisture-wicking base underneath"});
-  else if(feel<=55)L.push({slot:"Top",icon:"\uD83D\uDC55",item:"Long sleeve running shirt",note:feel<50?"consider a light vest":"lightweight fabric"});
-  else if(feel<=65)L.push({slot:"Top",icon:"\uD83D\uDC55",item:"Short sleeve + arm warmers",note:"easy to strip mid-run"});
-  else if(feel<=75)L.push({slot:"Top",icon:"\uD83D\uDC55",item:"Short sleeve tech shirt",note:"breathable"});
-  else L.push({slot:"Top",icon:"\uD83C\uDFC3",item:"Singlet or racerback",note:"max ventilation"});
-  if(rainy)L.push({slot:"Shell",icon:"\uD83C\uDF27",item:"Waterproof running jacket",note:"packable, taped seams if possible"});
-  else if(misty||(windy&&feel<50))L.push({slot:"Shell",icon:"\uD83D\uDCA8",item:"Wind shell",note:"light enough to tie around waist"});
-  if(feel<=30)L.push({slot:"Bottom",icon:"\uD83E\uDE32",item:"Thermal tights",note:"full length, wind-blocking"});
-  else if(feel<=45)L.push({slot:"Bottom",icon:"\uD83E\uDE32",item:"Running tights",note:"full length"});
-  else if(feel<=58)L.push({slot:"Bottom",icon:"\uD83E\uDE32",item:"3/4 tights or capris",note:"or shorts + calf sleeves"});
-  else L.push({slot:"Bottom",icon:"\uD83E\uDE33",item:"Running shorts",note:"moisture-wicking liner"});
-  if(feel<=35)L.push({slot:"Hands",icon:"\uD83E\uDDE4",item:"Running gloves",note:"thin wind-resistant pair"});
-  else if(feel<=45)L.push({slot:"Hands",icon:"\uD83E\uDDE4",item:"Light gloves",note:"you'll likely pull these off mid-run"});
-  if(feel<=30)L.push({slot:"Head",icon:"\uD83E\uDDE3",item:"Beanie + neck gaiter",note:"protect ears and neck"});
-  else if(feel<=42)L.push({slot:"Head",icon:"\uD83E\uDDE2",item:"Running beanie",note:"keeps ears warm"});
-  else if(rainy||uvHigh)L.push({slot:"Head",icon:"\uD83E\uDDE2",item:"Cap with brim",note:rainy?"keeps rain off your face":"shade from UV"});
-  if(feel<=40)L.push({slot:"Socks",icon:"\uD83E\uDDE6",item:"Thermal running socks",note:"slightly thicker for cold"});
-  else if(rainy)L.push({slot:"Socks",icon:"\uD83E\uDDE6",item:"Wool blend socks",note:"dries faster when wet"});
-  else L.push({slot:"Socks",icon:"\uD83E\uDDE6",item:"No-show running socks",note:"standard"});
-  if(uvHigh&&!rainy)L.push({slot:"Skin",icon:"\uD83C\uDF1E",item:"Sunscreen SPF 30+",note:"reapply if out over 90 min"});
+  if(feel<=25)L.push({slot:"Top",icon:"🧥",item:"Heavy insulated jacket",note:"windproof shell essential"});
+  else if(feel<=35)L.push({slot:"Top",icon:"🧥",item:"Thermal running jacket",note:"full zip, wind resistant"});
+  else if(feel<=45)L.push({slot:"Top",icon:"🫙",item:"Half-zip + base layer",note:"moisture-wicking base underneath"});
+  else if(feel<=55)L.push({slot:"Top",icon:"👕",item:"Long sleeve running shirt",note:feel<50?"consider a light vest":"lightweight fabric"});
+  else if(feel<=65)L.push({slot:"Top",icon:"👕",item:"Short sleeve + arm warmers",note:"easy to strip mid-run"});
+  else if(feel<=75)L.push({slot:"Top",icon:"👕",item:"Short sleeve tech shirt",note:"breathable"});
+  else L.push({slot:"Top",icon:"🎽",item:"Singlet or racerback",note:"max ventilation"});
+  if(rainy)L.push({slot:"Shell",icon:"🌧",item:"Waterproof running jacket",note:"packable, taped seams if possible"});
+  else if(misty||(windy&&feel<50))L.push({slot:"Shell",icon:"💨",item:"Wind shell",note:"light enough to tie around waist"});
+  if(feel<=30)L.push({slot:"Bottom",icon:"🩲",item:"Thermal tights",note:"full length, wind-blocking"});
+  else if(feel<=45)L.push({slot:"Bottom",icon:"🩲",item:"Running tights",note:"full length"});
+  else if(feel<=58)L.push({slot:"Bottom",icon:"🩲",item:"3/4 tights or capris",note:"or shorts + calf sleeves"});
+  else L.push({slot:"Bottom",icon:"🩳",item:"Running shorts",note:"moisture-wicking liner"});
+  if(feel<=35)L.push({slot:"Hands",icon:"🧤",item:"Running gloves",note:"thin wind-resistant pair"});
+  else if(feel<=45)L.push({slot:"Hands",icon:"🧤",item:"Light gloves",note:"you'll likely pull these off mid-run"});
+  if(feel<=30)L.push({slot:"Head",icon:"🧣",item:"Beanie + neck gaiter",note:"protect ears and neck"});
+  else if(feel<=42)L.push({slot:"Head",icon:"🧢",item:"Running beanie",note:"keeps ears warm"});
+  else if(rainy||uvHigh)L.push({slot:"Head",icon:"🧢",item:"Cap with brim",note:rainy?"keeps rain off your face":"shade from UV"});
+  if(feel<=40)L.push({slot:"Socks",icon:"🧦",item:"Thermal running socks",note:"slightly thicker for cold"});
+  else if(rainy)L.push({slot:"Socks",icon:"🧦",item:"Wool blend socks",note:"dries faster when wet"});
+  else L.push({slot:"Socks",icon:"🧦",item:"No-show running socks",note:"standard"});
+  if(uvHigh&&!rainy)L.push({slot:"Skin",icon:"🌞",item:"Sunscreen SPF 30+",note:"reapply if out over 90 min"});
   const fp=feel<=25?"Bitterly cold":feel<=35?"Very cold":feel<=45?"Cold":feel<=55?"Chilly":feel<=65?"Cool & comfortable":feel<=75?"Comfortable":feel<=82?"Warm":"Hot";
   return{layers:L,feel,feelPhrase:fp,rainy,uvHigh};
 }
@@ -177,9 +175,9 @@ function getWhyExplainer(bh,best){
   if(bh.w<=7)reasons.push("wind is barely noticeable");
   else if(bh.w<=12)reasons.push(`light ${bh.w} mph breeze`);
   const feel=bh.t>50||bh.w<3?bh.t:Math.round(35.74+0.6215*bh.t-35.75*Math.pow(bh.w,0.16)+0.4275*bh.t*Math.pow(bh.w,0.16));
-  if(feel>=55&&feel<=70)reasons.push(`${feel}\u00b0F feels perfect for running`);
-  else if(feel>=48&&feel<55)reasons.push(`crisp ${feel}\u00b0F \u2014 ideal race-day feel`);
-  else if(feel>70&&feel<=78)reasons.push(`${feel}\u00b0F is warm but manageable`);
+  if(feel>=55&&feel<=70)reasons.push(`${feel}°F feels perfect for running`);
+  else if(feel>=48&&feel<55)reasons.push(`crisp ${feel}°F — ideal race-day feel`);
+  else if(feel>70&&feel<=78)reasons.push(`${feel}°F is warm but manageable`);
   if((bh.aqi||40)<=50)reasons.push("air quality is excellent");
   if((bh.pollen||0)<=20)reasons.push("pollen is low");
   if(bh.u<=3)reasons.push("UV is minimal");
@@ -191,17 +189,18 @@ function getWhyExplainer(bh,best){
 }
 
 const BAD_DAY_MSGS=[
-  {emoji:"\uD83D\uDECB\uFE0F",title:"Take a day off.",sub:"You've earned it."},
-  {emoji:"\u2615",title:"Rest day confirmed.",sub:"Your legs will thank you tomorrow."},
-  {emoji:"\uD83E\uDDD8",title:"Nature says no.",sub:"Stretch, hydrate, try again tomorrow."},
-  {emoji:"\uD83D\uDCDA",title:"A great day to not run.",sub:"Seriously. Stay inside. Read something."},
-  {emoji:"\uD83C\uDF55",title:"Rest day protocol activated.",sub:"Treat yourself. The miles will be there tomorrow."},
+  {emoji:"🛋️",title:"Take a day off.",sub:"You've earned it."},
+  {emoji:"☕",title:"Rest day confirmed.",sub:"Your legs will thank you tomorrow."},
+  {emoji:"🧘",title:"Nature says no.",sub:"Stretch, hydrate, try again tomorrow."},
+  {emoji:"📚",title:"A great day to not run.",sub:"Seriously. Stay inside. Read something."},
+  {emoji:"🍕",title:"Rest day protocol activated.",sub:"Treat yourself. The miles will be there tomorrow."},
 ];
 
+const sl = s => s>=80?"PERFECT":s>=65?"GOOD":s>=45?"FAIR":"SKIP IT";
 async function doShare(bh,best,dateLabel,locationName,tempUnit){
-  const win=`${fmt12(bh.hr)} \u2013 ${fmt12(bh.hr+2)}`;
-  const tempStr=tempUnit==="C"?`${toC(bh.t)}\u00b0C`:`${bh.t}\u00b0F`;
-  const text=`\uD83C\uDFC3 Run Forecast \u2014 ${locationName}\n\uD83D\uDCC5 ${dateLabel}\n\u23F0 Best window: ${win}\n\u2B50 Score: ${best.avgScore}/100 (${sl(best.avgScore)})\n\n\uD83C\uDF21\uFE0F ${tempStr}  \u00B7  \uD83C\uDF27\uFE0F ${bh.p}% rain  \u00B7  \uD83D\uDCA8 ${bh.w} mph wind\n\nGet your forecast \u2192 temprunture.com`;
+  const win=`${fmt12(bh.hr)} – ${fmt12(bh.hr+2)}`;
+  const tempStr=tempUnit==="C"?`${toC(bh.t)}°C`:`${bh.t}°F`;
+  const text=`🏃 Run Forecast — ${locationName}\n📅 ${dateLabel}\n⏰ Best window: ${win}\n⭐ Score: ${best.avgScore}/100 (${sl(best.avgScore)})\n\n🌡️ ${tempStr}  ·  🌧️ ${bh.p}% rain  ·  💨 ${bh.w} mph wind\n\nGet your forecast → temprunture.com`;
   try{if(navigator.share){await navigator.share({title:"My Run Forecast",text,url:"https://temprunture.com"});return"shared";}await navigator.clipboard.writeText(text);return"copied";}
   catch(e){if(e.name!=="AbortError"){try{await navigator.clipboard.writeText(text);return"copied";}catch{}}return null;}
 }
@@ -272,7 +271,7 @@ function PWABanner({onDismiss}){
   const msg=isIOS?"Tap Share then 'Add to Home Screen'":"Tap Menu then 'Add to Home Screen'";
   return(
     <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,padding:"12px 16px",background:T.surface,borderTop:`1px solid ${T.border2}`,display:"flex",alignItems:"center",gap:12,boxShadow:"0 -4px 24px rgba(0,0,0,0.2)"}}>
-      <div style={{fontSize:22,flexShrink:0}}>&#128242;</div>
+      <div style={{fontSize:22,flexShrink:0}}>📲</div>
       <div style={{flex:1}}><div style={{...mono,fontSize:11,color:T.text}}>Add to your home screen</div><div style={{...mono,fontSize:9,color:T.muted,marginTop:2}}>{msg}</div></div>
       <button onClick={onDismiss} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"7px 14px",cursor:"pointer"}}>Dismiss</button>
     </div>
@@ -289,14 +288,14 @@ function LocationScreen({onGrant,onSkip}){
   };
   return(
     <div style={{background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"40px 24px",textAlign:"center"}}>
-      <div style={{fontSize:52,marginBottom:20}}>&#127939;</div>
-      <div style={{display:"flex",alignItems:"baseline",gap:0,marginBottom:8}}>
+      <div style={{fontSize:52,marginBottom:20}}>🏃</div>
+      <div style={{display:"flex",alignItems:"baseline",marginBottom:12}}>
         <span style={{...cond,fontSize:26,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
         <span style={{...cond,fontSize:44,fontWeight:700,color:T.green,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>RUN</span>
         <span style={{...cond,fontSize:26,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
       </div>
       <div style={{...mono,fontSize:11,color:T.muted,marginBottom:40,lineHeight:1.9,maxWidth:300}}>Live scored run windows with outfit picks, wind direction, air quality & pollen.</div>
-      {hasGeo&&<button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"14px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:16,opacity:asking?0.7:1,width:"100%",maxWidth:280}}>{asking?"Locating you...":"&#128205; Use My Location"}</button>}
+      {hasGeo&&<button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"14px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:16,opacity:asking?0.7:1,width:"100%",maxWidth:280}}>{asking?"Locating you...":"📍 Use My Location"}</button>}
       <button onClick={onSkip} style={{...mono,fontSize:11,color:T.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:1,textDecoration:"underline"}}>{hasGeo?"Use New York City instead":"Continue with New York City"}</button>
     </div>
   );
@@ -313,7 +312,7 @@ function StepperPicker({label,value,items,onChange}){
     <div>
       <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>{label}</div>
       <div style={{display:"flex",alignItems:"center",gap:10,background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"10px 14px"}}>
-        <button onClick={dec} disabled={idx<=0} style={btnStyle(idx<=0)}>\u2212</button>
+        <button onClick={dec} disabled={idx<=0} style={btnStyle(idx<=0)}>−</button>
         <div style={{flex:1,textAlign:"center"}}><div style={{...cond,fontSize:26,fontWeight:700,color:T.green,letterSpacing:1,lineHeight:1}}>{value}</div></div>
         <button onClick={inc} disabled={idx>=items.length-1} style={btnStyle(idx>=items.length-1)}>+</button>
       </div>
@@ -342,51 +341,42 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
     <div style={{position:"fixed",inset:0,zIndex:100}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
       <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"88vh",overflowY:"auto",paddingBottom:40}}>
-        {/* Handle */}
         <div style={{display:"flex",justifyContent:"center",padding:"14px 0 6px"}}>
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
-        {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 24px 16px",borderBottom:`1px solid ${T.border}`}}>
           <div style={{...cond,fontSize:26,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
-          <button onClick={onClose} style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:18,color:T.muted,flexShrink:0}}>\u2715</button>
+          <button onClick={onClose} style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:18,color:T.muted,flexShrink:0}}>✕</button>
         </div>
         <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
-          {/* Location */}
           <div style={{paddingBottom:16,borderBottom:`1px solid ${T.border}`}}>
             <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Location</div>
             <div style={{...mono,fontSize:12,color:T.text,marginBottom:10}}>{locationName}</div>
-            <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:7,padding:"8px 16px",cursor:"pointer",letterSpacing:1}}>&#128205; Change Location</button>
+            <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:7,padding:"8px 16px",cursor:"pointer",letterSpacing:1}}>📍 Change Location</button>
           </div>
-          {/* Distance */}
           <StepperPicker label="Run Distance" value={distVal} items={DIST_ITEMS} onChange={v=>setLoc(l=>({...l,distance:parseFloat(v.replace(" mi",""))}))}/>
-          {/* Pace */}
           <StepperPicker label="Pace" value={paceVal} items={PACE_ITEMS} onChange={v=>setLoc(l=>({...l,pace:paceFromStr(v)}))}/>
-          {/* Est time */}
           <div style={{background:T.surface2,borderRadius:10,padding:"14px 16px",border:`1px solid ${T.border}`}}>
             <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1,marginBottom:6}}>Estimated run time</div>
             <div style={{...cond,fontSize:30,fontWeight:700,color:T.green,letterSpacing:2}}>{dur}</div>
             <div style={{...mono,fontSize:9,color:T.dim,marginTop:4}}>{loc.distance} mi at {paceToStr(loc.pace)}</div>
           </div>
-          {/* Toggles */}
           <Toggle val={loc.daylightOnly} label="Daylight runs only" sub="Exclude windows after sunset" onToggle={()=>setLoc(l=>({...l,daylightOnly:!l.daylightOnly}))}/>
-          {/* Theme */}
           <div style={{padding:"12px 0",borderBottom:`1px solid ${T.border}`}}>
             <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Theme</div>
             <div style={{display:"flex",gap:6}}>
-              {["auto","light","dark"].map(opt=>(
-                <button key={opt} onClick={()=>setLoc(l=>({...l,theme:opt}))} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${loc.theme===opt?T.green:T.border2}`,cursor:"pointer",background:loc.theme===opt?`${T.green}20`:T.surface2,color:loc.theme===opt?T.green:T.muted,...mono,fontSize:11,letterSpacing:1,textTransform:"uppercase",transition:"all .15s"}}>
-                  {opt==="auto"?"\u2600\uFE0F\u2192\uD83C\uDF19":opt==="light"?"\u2600\uFE0F":"\uD83C\uDF19"} {opt}
+              {[{id:"auto",label:"☀️→🌙 Auto"},{id:"light",label:"☀️ Light"},{id:"dark",label:"🌙 Dark"}].map(({id,label})=>(
+                <button key={id} onClick={()=>setLoc(l=>({...l,theme:id}))} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:10,letterSpacing:0.5,transition:"all .15s"}}>
+                  {label}
                 </button>
               ))}
             </div>
             <div style={{...mono,fontSize:9,color:T.dim,marginTop:8}}>Auto switches at sunrise & sunset</div>
           </div>
-          {/* Temp unit */}
           <div style={{padding:"12px 0"}}>
             <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Temperature</div>
             <div style={{display:"inline-flex",gap:4,background:T.surface2,borderRadius:8,padding:4,border:`1px solid ${T.border2}`}}>
-              {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"9px 26px",borderRadius:6,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:12,fontWeight:500,letterSpacing:1}}>&#176;{u}</button>)}
+              {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"9px 26px",borderRadius:6,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:12,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
             </div>
           </div>
           <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"14px 24px",cursor:"pointer",letterSpacing:1.5,width:"100%"}}>Save</button>
@@ -411,7 +401,7 @@ export default function App(){
   const [refreshing,setRefreshing]=useState(false);
   const [touchStartY,setTouchStartY]=useState(null);
 
-  // ── Theme ──────────────────────────────────────────────────────────────────
+  // Theme
   const isDark=useMemo(()=>{
     const ov=settings.theme||"auto";
     if(ov==="dark")return true;
@@ -422,10 +412,8 @@ export default function App(){
     return h<rise||h>=set;
   },[settings.theme,weather]);
   const T=isDark?DARK:LIGHT;
+  useEffect(()=>{document.body.style.background=T.bg;},[T]);
 
-  useEffect(()=>{ document.body.style.background=T.bodyBg; },[T]);
-
-  // ── loadWeather ─────────────────────────────────────────────────────────────
   const loadWeather=useCallback(async(loc,apiKey)=>{
     setPhase("loading");setLoadError("");
     try{
@@ -434,24 +422,22 @@ export default function App(){
     }catch(err){
       const msg=err.message||"";
       if(msg.includes("401")||msg.includes("403")||msg.includes("Invalid")||msg.includes("invalid")){setLoadError("Invalid API key.");setPhase("error");return;}
-      if(msg.includes("429")){setLoadError("Rate limit hit \u2014 try again in a minute.");setPhase("error");return;}
+      if(msg.includes("429")){setLoadError("Rate limit hit — try again in a minute.");setPhase("error");return;}
       const now=new Date(),tom=new Date(now);tom.setDate(now.getDate()+1);
       setWeather({isLive:false,today:makeFallbackDay(now),tomorrow:makeFallbackDay(tom)});
       setPhase("ready");setTimeout(()=>setVisible(true),60);
     }
   },[]);
 
-  // ── Init ────────────────────────────────────────────────────────────────────
   useEffect(()=>{
     const style=document.createElement("style");
-    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.3);}::-webkit-scrollbar{width:3px;height:3px;}::-webkit-scrollbar-thumb{border-radius:2px;}`;
+    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.3);}::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{border-radius:2px;}`;
     document.head.appendChild(style);
     try{
       const sLoc=JSON.parse(localStorage.getItem("wsr_loc")||"null");
       const sSett=JSON.parse(localStorage.getItem("wsr_settings")||"null");
       if(sSett){
         const migrated={...DEFAULT_SETTINGS,...sSett};
-        // Migrate old pace (integer minutes) to seconds
         if(sSett.pace&&sSett.pace<60)migrated.pace=sSett.pace*60;
         setSettings(migrated);
       }
@@ -502,7 +488,6 @@ export default function App(){
     setLocation(null);setWeather(null);setPhase("location");
   },[]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   const bgStyle={background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text};
 
   if(phase==="init"||phase==="loading")return(
@@ -522,7 +507,7 @@ export default function App(){
   if(phase==="error")return(
     <ThemeCtx.Provider value={T}>
       <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:16,textAlign:"center",padding:32}}>
-        <div style={{fontSize:36}}>&#9888;&#65039;</div>
+        <div style={{fontSize:36}}>⚠️</div>
         <div style={{...cond,fontSize:24,color:T.skip,letterSpacing:2}}>Weather fetch failed</div>
         <div style={{...mono,fontSize:11,color:T.muted,maxWidth:300,lineHeight:1.8}}>{loadError}</div>
       </div>
@@ -547,31 +532,28 @@ export default function App(){
     <ThemeCtx.Provider value={T}>
       <div style={{...bgStyle,minHeight:"100vh",position:"relative",overflow:"hidden"}} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <WeatherBg hours={hours}/>
-        {refreshing&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,textAlign:"center",padding:"10px",background:T.surface,borderBottom:`1px solid ${T.border2}`,...mono,fontSize:10,color:T.green,letterSpacing:2}}>\u21bb REFRESHING...</div>}
+        {refreshing&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,textAlign:"center",padding:"10px",background:T.surface,borderBottom:`1px solid ${T.border2}`,...mono,fontSize:10,color:T.green,letterSpacing:2}}>↻ REFRESHING...</div>}
         {showPWA&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
         {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
 
         <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"36px 20px 64px"}}>
 
-          {/* ── Header ── */}
+          {/* Header */}
           <div className={`fade ${visible?"in":""}`} style={{marginBottom:28,...dd(0)}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
-                {/* Logo */}
-                <div style={{display:"flex",alignItems:"baseline",gap:0,lineHeight:1}}>
+                <div style={{display:"flex",alignItems:"baseline"}}>
                   <span style={{...cond,fontSize:24,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
                   <span style={{...cond,fontSize:42,fontWeight:700,color:T.green,letterSpacing:2,textTransform:"uppercase",lineHeight:0.9}}>RUN</span>
                   <span style={{...cond,fontSize:24,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
                 </div>
-                {/* Location */}
                 <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,marginTop:6}}>{location?.name||"Upper West Side, NYC"}</div>
-                {/* Status */}
                 <div style={{...mono,fontSize:9,marginTop:4,letterSpacing:1,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:weather.isLive?T.green:T.dim}}>{weather.isLive?"\u25cf Live":"\u25cc Estimate"}</span>
-                  {weather.fetchedAt&&<span style={{color:T.muted}}>\u00b7 Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
+                  <span style={{color:weather.isLive?T.green:T.dim}}>{weather.isLive?"● Live":"◌ Estimate"}</span>
+                  {weather.fetchedAt&&<span style={{color:T.muted}}>· Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
                 </div>
               </div>
-              <button onClick={()=>setShowSettings(true)} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"7px 14px",cursor:"pointer",letterSpacing:1,marginTop:4}}>&#9881; Settings</button>
+              <button onClick={()=>setShowSettings(true)} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"7px 14px",cursor:"pointer",letterSpacing:1,marginTop:4}}>⚙ Settings</button>
             </div>
             <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>{dayData.label.toUpperCase()}</div>
             <div style={{display:"inline-flex",gap:2,marginTop:14,background:T.surface,borderRadius:8,padding:3,border:`1px solid ${T.border2}`}}>
@@ -583,13 +565,12 @@ export default function App(){
             </div>
           </div>
 
-          {/* ── Hero card ── */}
+          {/* Hero */}
           {bh&&(
             <div className={`fade ${visible?"in":""}`} style={{...dd(120),marginBottom:16}}>
               <div style={{background:T.surface,borderRadius:20,border:`1px solid ${T.border2}`,padding:"28px 24px 24px",position:"relative",overflow:"hidden"}}>
                 <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}50,transparent)`}}/>
                 <div style={{position:"absolute",top:0,right:0,width:120,height:120,background:`radial-gradient(circle at top right,${col}12,transparent 70%)`,pointerEvents:"none"}}/>
-                {/* Score + window */}
                 <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
                   <div style={{position:"relative",width:200,height:200,flexShrink:0,margin:"-20px -16px -20px -16px"}}>
                     <ScoreArc score={best.avgScore} color={col} animate={visible}/>
@@ -601,44 +582,44 @@ export default function App(){
                   </div>
                   <div style={{flex:1,minWidth:130}}>
                     <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Best Window</div>
-                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1}}>{fmt12(bh.hr)} \u2013 {fmt12(bh.hr+2)}</div>
+                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1}}>{fmt12(bh.hr)} – {fmt12(bh.hr+2)}</div>
                     <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>Back by ~{retStr}</div>
-                    <div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{settings.distance} mi \u00b7 {paceToStr(settings.pace)}</div>
+                    <div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{settings.distance} mi · {paceToStr(settings.pace)}</div>
                   </div>
                 </div>
 
-                {/* 5 metric tiles — no score number */}
+                {/* 5 metric tiles — no score shown */}
                 <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:22}}>
                   {[
-                    {icon:"&#127777;",label:"Temp",  value:displayTemp(bh.t,tu),  color:sc(bh.bd.temperature,T)},
-                    {icon:"&#127783;",label:"Rain",  value:`${bh.p}%`,             color:sc(bh.bd.precipitation,T)},
-                    {icon:"&#128168;",label:"Wind",  value:`${bh.w}mph`,           color:sc(bh.bd.wind,T)},
-                    {icon:"&#128154;",label:"AQI",   value:aqiLabel(bh.aqi||40).l, color:aqC(bh.aqi||40,T)},
-                    {icon:"&#127807;",label:"Pollen",value:polLabel(bh.pollen||0).l,color:polC(bh.pollen||0,T)},
+                    {icon:"🌡",label:"Temp",   value:displayTemp(bh.t,tu),       color:sc(bh.bd.temperature,T)},
+                    {icon:"🌧",label:"Rain",   value:`${bh.p}%`,                 color:sc(bh.bd.precipitation,T)},
+                    {icon:"💨",label:"Wind",   value:`${bh.w}mph`,               color:sc(bh.bd.wind,T)},
+                    {icon:"💚",label:"AQI",    value:aqiLabel(bh.aqi||40).l,     color:aqC(bh.aqi||40,T)},
+                    {icon:"🌿",label:"Pollen", value:polLabel(bh.pollen||0).l,   color:polC(bh.pollen||0,T)},
                   ].map(({icon,label,value,color})=>(
                     <div key={label} style={{background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"11px 8px",textAlign:"center",display:"flex",flexDirection:"column",gap:5}}>
-                      <div style={{fontSize:15}} dangerouslySetInnerHTML={{__html:icon}}/>
+                      <div style={{fontSize:15}}>{icon}</div>
                       <div style={{...mono,fontSize:8,color:T.muted,letterSpacing:1,textTransform:"uppercase"}}>{label}</div>
                       <div style={{...mono,fontSize:11,color,fontWeight:500,letterSpacing:0.5,lineHeight:1.1}}>{value}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Factor bars with actual values */}
+                {/* Factor bars */}
                 <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.border}`}}>
                   {[
-                    {key:"precipitation",label:"Rain",    icon:"&#127783;",actual:`${bh.p}%`},
-                    {key:"wind",         label:"Wind",    icon:"&#128168;",actual:`${bh.w} mph`},
-                    {key:"temperature",  label:"Temp",    icon:"&#127777;",actual:displayTemp(bh.t,tu)},
-                    {key:"aqi",          label:"AQ",      icon:"&#128154;",actual:aqiLabel(bh.aqi||40).l},
-                    {key:"humidity",     label:"Humidity",icon:"&#128167;",actual:`${bh.h}%`},
-                    {key:"uv",           label:"UV",      icon:"&#9728;&#65039;",actual:`${bh.u}`},
-                    {key:"pollen",       label:"Pollen",  icon:"&#127807;",actual:polLabel(bh.pollen||0).l},
+                    {key:"precipitation",label:"Rain",    icon:"🌧",actual:`${bh.p}%`},
+                    {key:"wind",         label:"Wind",    icon:"💨",actual:`${bh.w} mph`},
+                    {key:"temperature",  label:"Temp",    icon:"🌡",actual:displayTemp(bh.t,tu)},
+                    {key:"aqi",          label:"AQ",      icon:"💚",actual:aqiLabel(bh.aqi||40).l},
+                    {key:"humidity",     label:"Humidity",icon:"💧",actual:`${bh.h}%`},
+                    {key:"uv",           label:"UV",      icon:"☀️",actual:`${bh.u}`},
+                    {key:"pollen",       label:"Pollen",  icon:"🌿",actual:polLabel(bh.pollen||0).l},
                   ].map(({key,label,icon,actual},fi)=>{
                     const sv=bh.bd[key],fc=sc(sv,T);
                     return(
                       <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}>
-                        <div style={{fontSize:12,width:18,flexShrink:0}} dangerouslySetInnerHTML={{__html:icon}}/>
+                        <div style={{fontSize:12,width:18,flexShrink:0}}>{icon}</div>
                         <div style={{...mono,fontSize:10,color:T.muted,width:62,letterSpacing:1,flexShrink:0}}>{label}</div>
                         <div style={{flex:1,background:T.surface2,borderRadius:2,height:3,overflow:"hidden"}}>
                           <div style={{width:visible?`${sv}%`:"0%",height:"100%",background:`linear-gradient(90deg,${T.greenDeep},${fc})`,borderRadius:2,boxShadow:`0 0 8px ${fc}50`,transition:"width 1.1s cubic-bezier(0.4,0,0.2,1)",transitionDelay:`${300+fi*70}ms`}}/>
@@ -653,7 +634,7 @@ export default function App(){
                 {/* Why this window */}
                 {(()=>{const why=getWhyExplainer(bh,best);return(
                   <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",gap:10}}>
-                    <span style={{color:col,fontSize:15,flexShrink:0,marginTop:1}}>&#128172;</span>
+                    <span style={{color:col,fontSize:15,flexShrink:0,marginTop:1}}>💬</span>
                     <div>
                       <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>Why this window?</div>
                       <div style={{...mono,fontSize:11,color:T.text,lineHeight:1.7}}>{why}</div>
@@ -663,14 +644,14 @@ export default function App(){
 
                 {/* Share */}
                 <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",gap:10,alignItems:"center"}}>
-                  <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! \uD83C\uDF89");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>&#128228; Share this forecast</button>
+                  <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
                   {shareMsg&&<div style={{...mono,fontSize:10,color:T.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Bad day ── */}
+          {/* Bad day */}
           {!bh&&hours.length>0&&(()=>{
             const msg=BAD_DAY_MSGS[new Date().getDate()%BAD_DAY_MSGS.length];
             const worstScore=Math.max(...hours.map(h=>h.score));
@@ -687,7 +668,7 @@ export default function App(){
             );
           })()}
 
-          {/* ── Direction tile ── */}
+          {/* Direction */}
           {bh&&(
             <div className={`fade ${visible?"in":""}`} style={{...dd(220),marginBottom:16}}>
               <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
@@ -697,18 +678,18 @@ export default function App(){
                   <WindRose windDeg={dayData.windDeg} color={col}/>
                   <div style={{flex:1}}>
                     <div style={{...cond,fontSize:24,fontWeight:700,color:T.text,letterSpacing:2,lineHeight:1,textTransform:"uppercase"}}>{dirRec.headline}</div>
-                    <div style={{...mono,fontSize:10,color:col,marginTop:6}}>{compassLabel(dayData.windDeg)} wind \u00b7 {bh.w} mph</div>
+                    <div style={{...mono,fontSize:10,color:col,marginTop:6}}>{compassLabel(dayData.windDeg)} wind · {bh.w} mph</div>
                     <div style={{...mono,fontSize:10,color:T.muted,marginTop:8,lineHeight:1.7}}>{dirRec.detail}</div>
                   </div>
                 </div>
                 <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`,...mono,fontSize:9,color:T.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:T.greenDim,fontSize:11}}>&#9889;</span>Run into the headwind while fresh \u2014 earn your tailwind on the way home.
+                  <span style={{color:T.greenDim,fontSize:11}}>⚡</span>Run into the headwind while fresh — earn your tailwind on the way home.
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Outfit ── */}
+          {/* Outfit */}
           {outfit&&(
             <div className={`fade ${visible?"in":""}`} style={{...dd(300),marginBottom:16}}>
               <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
@@ -735,21 +716,21 @@ export default function App(){
                   ))}
                 </div>
                 <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${T.border}`,...mono,fontSize:9,color:T.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:T.greenDim,fontSize:11}}>&#128161;</span>Dress for 15\u201320\u00b0 warmer than feel-like \u2014 your body heat does the rest.
+                  <span style={{color:T.greenDim,fontSize:11}}>💡</span>Dress for 15–20° warmer than feel-like — your body heat does the rest.
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Time-of-day table ── */}
+          {/* Time-of-day table */}
           <div className={`fade ${visible?"in":""}`} style={{...dd(380),marginBottom:16}}>
             <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px"}}>
               <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Conditions by Time of Day</div>
               {[
-                {label:"Early Morning",icon:"&#127749;",range:[5,8]},
-                {label:"Morning",      icon:"&#9728;&#65039;",range:[9,12]},
-                {label:"Afternoon",    icon:"&#127780;",range:[13,17]},
-                {label:"Evening",      icon:"&#127750;",range:[18,21]},
+                {label:"Early Morning",icon:"🌅",range:[5,8]},
+                {label:"Morning",      icon:"☀️",range:[9,12]},
+                {label:"Afternoon",    icon:"🌤",range:[13,17]},
+                {label:"Evening",      icon:"🌆",range:[18,21]},
               ].map(({label,icon,range})=>{
                 const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]);
                 if(group.length===0)return null;
@@ -761,10 +742,10 @@ export default function App(){
                   <div key={label} style={{marginBottom:12,background:isBestWindow?`${fc}10`:T.surface2,borderRadius:10,border:`1px solid ${isBestWindow?fc+"40":T.border}`,padding:"12px 14px"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:15}} dangerouslySetInnerHTML={{__html:icon}}/>
+                        <span style={{fontSize:15}}>{icon}</span>
                         <div>
                           <div style={{...mono,fontSize:10,color:isBestWindow?fc:T.text,fontWeight:500,letterSpacing:1}}>{label}</div>
-                          <div style={{...mono,fontSize:9,color:T.dim,marginTop:2}}>{fmt12(range[0])} \u2013 {fmt12(range[1]+1)}</div>
+                          <div style={{...mono,fontSize:9,color:T.dim,marginTop:2}}>{fmt12(range[0])} – {fmt12(range[1]+1)}</div>
                         </div>
                       </div>
                       <div style={{textAlign:"right"}}>
@@ -791,19 +772,16 @@ export default function App(){
             </div>
           </div>
 
-          {/* ── Legend & footer ── */}
+          {/* Legend */}
           <div className={`fade ${visible?"in":""}`} style={{...dd(500),marginTop:8,display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["great","80+"],[" good","65+"],["fair","45+"],["skip","<45"]].map(([k,lbl])=>{
-              const fc=T[k.trim()];
-              return(
-                <div key={lbl} style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:fc,boxShadow:`0 0 5px ${fc}`}}/>
-                  <span style={{...mono,fontSize:9,color:T.dim,letterSpacing:1}}>{lbl}</span>
-                </div>
-              );
-            })}
+            {[["great","80+"],["good","65+"],["fair","45+"],["skip","<45"]].map(([k,lbl])=>(
+              <div key={lbl} style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:T[k],boxShadow:`0 0 5px ${T[k]}`}}/>
+                <span style={{...mono,fontSize:9,color:T.dim,letterSpacing:1}}>{lbl}</span>
+              </div>
+            ))}
           </div>
-          <div style={{textAlign:"center",marginTop:10,...mono,fontSize:8,color:T.dim,letterSpacing:2,opacity:0.5}}>{weather.isLive?"LIVE \u00b7 TOMORROW.IO + OPEN-METEO":"SEASONAL ESTIMATE"} \u00b7 TEMPRUNTURE.COM</div>
+          <div style={{textAlign:"center",marginTop:10,...mono,fontSize:8,color:T.dim,letterSpacing:2,opacity:0.5}}>{weather.isLive?"LIVE · TOMORROW.IO + OPEN-METEO":"SEASONAL ESTIMATE"} · TEMPRUNTURE.COM</div>
         </div>
       </div>
     </ThemeCtx.Provider>

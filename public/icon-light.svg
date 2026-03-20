@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="115" fill="#f4efe6"/>
-  <text x="256" y="210" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#4a6850" letter-spacing="6">temp</text>
-  <text x="256" y="330" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-style="italic" font-size="168" fill="#1a7a4a" letter-spacing="-2">RUN</text>
-  <text x="256" y="410" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="96" fill="#4a6850" letter-spacing="6">ture</text>
-</svg>

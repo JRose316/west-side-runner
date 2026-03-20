@@ -910,7 +910,29 @@ export default function App(){
               </div>
             ))}
           </div>
-          <div style={{textAlign:"center",marginTop:10,...mono,fontSize:8,color:T.dim,letterSpacing:2,opacity:0.5}}>{weather.isLive?"LIVE · TOMORROW.IO + OPEN-METEO":"SEASONAL ESTIMATE"} · TEMPRUNTURE.COM</div>
+
+          {/* About footer */}
+          <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:32,paddingTop:24,borderTop:`1px solid ${T.border}`}}>
+            <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",marginBottom:12}}>
+              <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
+              <span style={{...cond,fontSize:22,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,margin:"0 2px",textTransform:"uppercase",lineHeight:1}}>RUN</span>
+              <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
+            </div>
+            <div style={{...mono,fontSize:9,color:T.dim,textAlign:"center",lineHeight:1.9,maxWidth:340,margin:"0 auto",marginBottom:16}}>
+              Built for runners who want to run smarter, not just harder. tempRUNture scores every hour of the day across 7 weather factors so you always know your best window — wherever you are in the world.
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+              {[{label:"Free forever",icon:"✓"},{label:"Works anywhere",icon:"🌍"},{label:"No account needed",icon:"✓"},{label:"Live weather data",icon:"⚡"}].map(({label,icon})=>(
+                <div key={label} style={{...mono,fontSize:8,color:T.muted,letterSpacing:0.5,display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{color:T.green}}>{icon}</span>{label}
+                </div>
+              ))}
+            </div>
+            <div style={{...mono,fontSize:8,color:T.dim,textAlign:"center",marginTop:20,opacity:0.5,letterSpacing:1}}>
+              © {new Date().getFullYear()} temprunture.com
+            </div>
+          </div>
+  
         </div>
       </div>
     </ThemeCtx.Provider>

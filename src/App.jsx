@@ -15,13 +15,26 @@ const LIGHT = {
   text:"#1a2820", muted:"#4a6850", dim:"#9aaa98",
   great:"#1a7a4a", good:"#5a8010", fair:"#b06808", skip:"#c03030",
 };
+// ─── Accent color palettes ────────────────────────────────────────────────────
+const ACCENTS = {
+  forest: { name:"Forest", dot:"#3dd68c", dark:{green:"#3dd68c",greenMid:"#2aab6e",greenDim:"#165c38",greenDeep:"#0a3320"}, light:{green:"#1a7a4a",greenMid:"#156038",greenDim:"#0d4228",greenDeep:"#dff0e8"} },
+  ember:  { name:"Ember",  dot:"#f05c5c", dark:{green:"#f05c5c",greenMid:"#c43e3e",greenDim:"#6b1a1a",greenDeep:"#2a0a0a"}, light:{green:"#b02020",greenMid:"#8a1818",greenDim:"#5a0e0e",greenDeep:"#fce8e8"} },
+  ocean:  { name:"Ocean",  dot:"#4da8f0", dark:{green:"#4da8f0",greenMid:"#2a82cc",greenDim:"#0e3a6b",greenDeep:"#05182e"}, light:{green:"#1055a0",greenMid:"#0d4285",greenDim:"#082860",greenDeep:"#e0eef8"} },
+  blaze:  { name:"Blaze",  dot:"#f0924d", dark:{green:"#f0924d",greenMid:"#cc6a2a",greenDim:"#6b2e0e",greenDeep:"#2a1005"}, light:{green:"#b04010",greenMid:"#8a300c",greenDim:"#5a1e08",greenDeep:"#fceee0"} },
+  storm:  { name:"Storm",  dot:"#a56cf0", dark:{green:"#a56cf0",greenMid:"#7a42cc",greenDim:"#3a1a6b",greenDeep:"#180a2a"}, light:{green:"#6020b0",greenMid:"#4c1888",greenDim:"#320e5a",greenDeep:"#ede0fc"} },
+};
+function applyAccent(theme,accentKey,isDark){
+  const acc=ACCENTS[accentKey]||ACCENTS.forest;
+  const tokens=isDark?acc.dark:acc.light;
+  return{...theme,...tokens,great:tokens.green,good:tokens.green+"cc"};
+}
 const ThemeCtx = createContext(DARK);
 const useT = () => useContext(ThemeCtx);
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 const W = { precipitation:0.28, wind:0.20, temperature:0.18, humidity:0.08, uv:0.06, aqi:0.15, pollen:0.05 };
 const DEFAULT_LOC = { lat:40.794, lon:-73.9916, name:"Upper West Side, NYC" };
-const DEFAULT_SETTINGS = { distance:5.0, pace:540, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV", daylightOnly:false, tempUnit:"F", theme:"auto" };
+const DEFAULT_SETTINGS = { distance:5.0, pace:540, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV", daylightOnly:false, tempUnit:"F", theme:"auto", accentColor:"forest" };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const sc  = (s,T) => s>=80?T.great:s>=65?T.good:s>=45?T.fair:T.skip;
@@ -108,7 +121,7 @@ async function fetchLiveWeather(lat,lon,apiKey){
   return{isLive:true,fetchedAt:Date.now(),today:{label:fmtL(now),hours:td.hrs,windDeg:td.windDeg,sunTimes:getSun(todayStr)},tomorrow:{label:fmtL(tom),hours:tm.hrs,windDeg:tm.windDeg,sunTimes:getSun(tomStr)}};
 }
 async function getLocationName(lat,lon){
-  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=12`,{headers:{"Accept-Language":"en"}});const d=await r.json(),a=d.address;return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}°N`;}
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=15`,{headers:{"Accept-Language":"en"}});const d=await r.json(),a=d.address;return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}°N`;}
   catch{return `${lat.toFixed(2)}°N`;}
 }
 
@@ -119,15 +132,41 @@ function scoreHour(h){
   const p=Math.max(0,100-(h.p??0)*0.8),ww=Math.max(0,100-(h.w??0)*4),t=Math.max(0,100-Math.abs((h.t??62)-62.5)*3.5),hm=Math.max(0,100-(h.h??0)*0.9),u=Math.max(0,100-(h.u??0)*9),aq=sAQI(h.aqi??40),po=sPollen(h.pollen??0);
   return{total:Math.round(p*W.precipitation+ww*W.wind+t*W.temperature+hm*W.humidity+u*W.uv+aq*W.aqi+po*W.pollen),bd:{precipitation:Math.round(p),wind:Math.round(ww),temperature:Math.round(t),humidity:Math.round(hm),uv:Math.round(u),aqi:Math.round(aq),pollen:Math.round(po)}};
 }
+function interpHour(h1,h2,t){
+  // Linearly interpolate between two hourly readings at fraction t (0=h1, 1=h2)
+  if(!h1||!h2)return h1||h2;
+  const lerp=(a,b)=>Math.round(a+(b-a)*t);
+  return{hr:h1.hr+t,t:lerp(h1.t,h2.t),p:lerp(h1.p,h2.p),w:lerp(h1.w,h2.w),wd:lerp(h1.wd,h2.wd),h:lerp(h1.h,h2.h),u:parseFloat((h1.u+(h2.u-h1.u)*t).toFixed(1)),aqi:lerp(h1.aqi,h2.aqi),pollen:lerp(h1.pollen,h2.pollen)};
+}
+function fmt15(decHr){
+  const h=Math.floor(decHr),m=Math.round((decHr-h)*60);
+  if(m===0)return fmt12(h);
+  const base=h===0||h===24?"12":h<=12?String(h):String(h-12);
+  const suf=h<12||h===24?"am":"pm";
+  return`${base}:${String(m).padStart(2,"0")}${suf}`;
+}
 function processHours(arr,sunTimes,daylightOnly,currentHour){
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
-  for(let i=0;i<hours.length-1;i++){
-    // Skip past hours when viewing today (need at least 30 min into the hour)
-    if(currentHour!=null&&hours[i].hr<currentHour)continue;
-    if(daylightOnly&&sunTimes){const isNight=hours[i].hr<sunTimes.sunrise||hours[i].hr>=sunTimes.sunset||hours[i+1].hr>=sunTimes.sunset;if(isNight)continue;}
-    const avg=Math.round((hours[i].score+hours[i+1].score)/2);
-    if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg};
+  // Check every 15-minute mark for the best 2-hour window
+  for(let i=0;i<hours.length-2;i++){
+    for(let q=0;q<4;q++){
+      const t=q/4;
+      const decHr=hours[i].hr+t;
+      if(currentHour!=null&&decHr<currentHour)continue;
+      if(daylightOnly&&sunTimes){
+        const endHr=decHr+2;
+        if(decHr<sunTimes.sunrise||endHr>sunTimes.sunset)continue;
+      }
+      // Score start point (blend of hour i and i+1)
+      const startBlend=interpHour(hours[i],hours[i+1],t);
+      // Score end point 2hrs later (blend of hour i+2 and i+3 if available)
+      const endIdx=i+2,endT=t;
+      const endBlend=endIdx<hours.length-1?interpHour(hours[endIdx],hours[endIdx+1],endT):hours[Math.min(endIdx,hours.length-1)];
+      const s1=scoreHour(startBlend),s2=scoreHour(endBlend);
+      const avg=Math.round((s1.total+s2.total)/2);
+      if(!best||avg>best.avgScore)best={startIdx:i,startQ:q,avgScore:avg,decHr,startData:{...startBlend,score:s1.total,bd:s1.bd}};
+    }
   }
   if(best&&best.avgScore<35)best=null;
   return{hours,best};
@@ -172,7 +211,7 @@ function getOutfit(h){
 
 function getWhyExplainer(bh,best){
   const reasons=[];
-  if(bh.p<=10)reasons.push("no rain in the forecast");
+  if(bh.p<=10)reasons.push("no precipitation in the forecast");
   else if(bh.p<=25)reasons.push(`only ${bh.p}% chance of rain`);
   if(bh.w<=7)reasons.push("wind is barely noticeable");
   else if(bh.w<=12)reasons.push(`light ${bh.w} mph breeze`);
@@ -198,10 +237,43 @@ const BAD_DAY_MSGS=[
   {emoji:"🍕",title:"Rest day protocol activated.",sub:"Treat yourself. The miles will be there tomorrow."},
 ];
 
-async function doShare(bh,best,dateLabel,locationName,tempUnit){
-  const win=`${fmt12(bh.hr)} – ${fmt12(bh.hr+2)}`;
+// ─── Feedback tracking ────────────────────────────────────────────────────────
+// Replace AIRTABLE_TOKEN and AIRTABLE_BASE_ID with your actual values
+// Get them from airtable.com → your base → Help → API docs
+const AIRTABLE_TOKEN = "YOUR_AIRTABLE_TOKEN_HERE";
+const AIRTABLE_BASE_ID = "YOUR_AIRTABLE_BASE_ID_HERE";
+async function submitFeedback(vote, bh, best, location, view) {
+  if(!AIRTABLE_TOKEN || AIRTABLE_TOKEN.startsWith("YOUR_")) return; // skip if not configured
+  try {
+    const now = new Date();
+    await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Feedback`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: {
+        Vote: vote === "up" ? "👍 Helpful" : "👎 Not helpful",
+        Date: now.toISOString().slice(0,10),
+        Time: now.toTimeString().slice(0,5),
+        Day: view,
+        Location: location || "Unknown",
+        Score: best?.avgScore || 0,
+        Temp_F: bh?.t || 0,
+        Precip_Pct: bh?.p || 0,
+        Wind_MPH: bh?.w || 0,
+        AQI: bh?.aqi || 0,
+        Pollen: bh?.pollen || 0,
+        Humidity_Pct: bh?.h || 0,
+        UV: bh?.u || 0,
+        Window_Start: best?.decHr ? `${Math.floor(best.decHr)}:${String(Math.round((best.decHr%1)*60)).padStart(2,"0")}` : "",
+      }})
+    });
+  } catch(e) { /* silent fail — feedback tracking is non-critical */ }
+}
+
+async function doShare(bh,best,winStart,dateLabel,locationName,tempUnit){
+  const win=`${fmt15(winStart)} – ${fmt15(winStart+2)}`;
   const tempStr=tempUnit==="C"?`${toC(bh.t)}°C`:`${bh.t}°F`;
-  const text=`🏃 Run Forecast — ${locationName}\n📅 ${dateLabel}\n⏰ Best window: ${win}\n⭐ Score: ${best.avgScore}/100 (${sl(best.avgScore)})\n\n🌡️ ${tempStr}  ·  🌧️ ${bh.p}% rain  ·  💨 ${bh.w} mph wind\n\nGet your forecast → temprunture.com`;
+  const dow=dateLabel.split(",")[0];
+  const text=`🏃 ${locationName} · ${dow}\n⏰ ${win} · ${best.avgScore}/100 ${sl(best.avgScore)}\n${tempStr} · ${bh.p}% precip · ${bh.w}mph wind`;
   try{if(navigator.share){await navigator.share({title:"My Run Forecast",text,url:"https://temprunture.com"});return"shared";}await navigator.clipboard.writeText(text);return"copied";}
   catch(e){if(e.name!=="AbortError"){try{await navigator.clipboard.writeText(text);return"copied";}catch{}}return null;}
 }
@@ -232,14 +304,18 @@ function AnimNum({value,dur=1200}){
 
 function WindRose({windDeg,color}){
   const T=useT();
-  const rad=d=>d*Math.PI/180,going=(windDeg+180)%360,aa=rad(going-90),cx=36,cy=36,r=26;
+  const rad=d=>d*Math.PI/180,going=(windDeg+180)%360,aa=rad(going-90),cx=40,cy=40,r=26;
   const tx=cx+r*Math.cos(aa),ty=cy+r*Math.sin(aa),bx=cx-(r*0.6)*Math.cos(aa),by=cy-(r*0.6)*Math.sin(aa),px=Math.cos(aa+Math.PI/2)*6,py=Math.sin(aa+Math.PI/2)*6;
+  // Label positions: N=top, E=right, S=bottom, W=left — fixed coords, no clipping
+  const labels=[["N",cx,cy-(r+13)],["E",cx+(r+13),cy],["S",cx,cy+(r+13)],["W",cx-(r+13),cy]];
   return(
-    <svg width="72" height="72">
+    <svg width="80" height="80" style={{overflow:"visible"}}>
       <defs><filter id="wg"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <circle cx={cx} cy={cy} r={r+4} fill="none" stroke={T.border2} strokeWidth="1"/>
       {[0,90,180,270].map(deg=>{const a=rad(deg-90);return<line key={deg} x1={cx+(r-2)*Math.cos(a)} y1={cy+(r-2)*Math.sin(a)} x2={cx+(r+4)*Math.cos(a)} y2={cy+(r+4)*Math.sin(a)} stroke={T.border2} strokeWidth="1.5"/>;}) }
-      {[["N",0],["E",90],["S",180],["W",270]].map(([l,deg])=>{const a=rad(deg-90);return<text key={l} x={cx+(r+12)*Math.cos(a)-3} y={cy+(r+12)*Math.sin(a)+3} fill={T.dim} fontSize="8" fontFamily="JetBrains Mono,monospace" textAnchor="middle">{l}</text>;}) }
+      {labels.map(([l,lx,ly])=>(
+        <text key={l} x={lx} y={ly} fill={T.muted} fontSize="9" fontFamily="JetBrains Mono,monospace" textAnchor="middle" dominantBaseline="middle" fontWeight="500">{l}</text>
+      ))}
       <polygon points={`${tx},${ty} ${bx+px},${by+py} ${bx-px},${by-py}`} fill={color} filter="url(#wg)"/>
       <circle cx={cx} cy={cy} r="3" fill={T.surface2} stroke={color} strokeWidth="1.5"/>
     </svg>
@@ -381,6 +457,42 @@ function StepperPicker({label,value,items,onChange}){
   );
 }
 
+// ─── Dual Stepper ─────────────────────────────────────────────────────────────
+function DualStepper({label,leftLabel,rightLabel,leftValue,rightValue,leftItems,rightItems,onLeftChange,onRightChange}){
+  const T=useT();
+  const btnStyle=disabled=>({...mono,fontSize:16,color:disabled?T.dim:T.green,background:"none",border:`1px solid ${disabled?T.border:T.border2}`,borderRadius:6,width:32,height:32,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
+  const li=leftItems.indexOf(leftValue),ri=rightItems.indexOf(rightValue);
+  return(
+    <div>
+      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
+      <div style={{display:"flex",gap:8}}>
+        {/* Left stepper */}
+        <div style={{flex:1,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"6px 8px"}}>
+          <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1,textAlign:"center",marginBottom:4}}>{leftLabel}</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={()=>{if(li>0)onLeftChange(leftItems[li-1]);}} disabled={li<=0} style={btnStyle(li<=0)}>−</button>
+            <div style={{flex:1,textAlign:"center",...cond,fontSize:20,fontWeight:700,color:T.green,lineHeight:1}}>{leftValue}</div>
+            <button onClick={()=>{if(li<leftItems.length-1)onLeftChange(leftItems[li+1]);}} disabled={li>=leftItems.length-1} style={btnStyle(li>=leftItems.length-1)}>+</button>
+          </div>
+        </div>
+        {/* Right stepper */}
+        <div style={{flex:1,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"6px 8px"}}>
+          <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1,textAlign:"center",marginBottom:4}}>{rightLabel}</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={()=>{if(ri>0)onRightChange(rightItems[ri-1]);}} disabled={ri<=0} style={btnStyle(ri<=0)}>−</button>
+            <div style={{flex:1,textAlign:"center",...cond,fontSize:20,fontWeight:700,color:T.green,lineHeight:1}}>{rightValue}</div>
+            <button onClick={()=>{if(ri<rightItems.length-1)onRightChange(rightItems[ri+1]);}} disabled={ri>=rightItems.length-1} style={btnStyle(ri>=rightItems.length-1)}>+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+const DIST_WHOLE = Array.from({length:26},(_,i)=>`${i+1}`);
+const DIST_FRAC  = ["0",".25",".5",".75"];
+const PACE_MINS  = Array.from({length:11},(_,i)=>`${i+5}`);
+const PACE_SECS  = ["00","10","20","30","40","50"];
+
 // ─── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({val,label,sub,onToggle}){
   const T=useT();
@@ -401,8 +513,13 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   const runSecs=loc.distance*loc.pace;
   const runM=Math.floor(runSecs/60),runH=Math.floor(runM/60),runRem=runM%60;
   const dur=runH>0?`${runH}h ${runRem}m`:`${runM}m`;
-  const distVal=`${loc.distance} mi`;
-  const paceVal=paceToStr(loc.pace);
+  // Distance split into whole miles + fraction
+  const distWhole=String(Math.floor(loc.distance));
+  const distFracRaw=Math.round((loc.distance-Math.floor(loc.distance))*4)/4;
+  const distFrac=distFracRaw===0?"0":distFracRaw===0.25?".25":distFracRaw===0.5?".5":".75";
+  // Pace split into whole minutes + seconds
+  const paceMins=String(Math.floor(loc.pace/60));
+  const paceSecs=String(loc.pace%60).padStart(2,"0");
 
   // Lock background scroll while open
   useEffect(()=>{
@@ -433,13 +550,27 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
               <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:9,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"5px 10px",cursor:"pointer",letterSpacing:1,flexShrink:0}}>📍 Change</button>
             </div>
           </div>
-          <StepperPicker label="Run Distance" value={distVal} items={DIST_ITEMS} onChange={v=>setLoc(l=>({...l,distance:parseFloat(v.replace(" mi",""))}))}/>
-          <StepperPicker label="Pace" value={paceVal} items={PACE_ITEMS} onChange={v=>setLoc(l=>({...l,pace:paceFromStr(v)}))}/>
+          <DualStepper
+            label="Run Distance"
+            leftLabel="Miles" rightLabel="+ Fraction"
+            leftValue={distWhole} rightValue={distFrac}
+            leftItems={DIST_WHOLE} rightItems={DIST_FRAC}
+            onLeftChange={v=>setLoc(l=>({...l,distance:parseFloat(v)+parseFloat(distFrac)}))}
+            onRightChange={v=>setLoc(l=>({...l,distance:Math.floor(l.distance)+parseFloat(v)}))}
+          />
+          <DualStepper
+            label="Pace"
+            leftLabel="Min /mi" rightLabel="Sec /mi"
+            leftValue={paceMins} rightValue={paceSecs}
+            leftItems={PACE_MINS} rightItems={PACE_SECS}
+            onLeftChange={v=>setLoc(l=>({...l,pace:parseInt(v)*60+(l.pace%60)}))}
+            onRightChange={v=>setLoc(l=>({...l,pace:Math.floor(l.pace/60)*60+parseInt(v)}))}
+          />
           <div style={{background:T.surface2,borderRadius:9,padding:"10px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1}}>Est. run time</div>
             <div style={{textAlign:"right"}}>
               <span style={{...cond,fontSize:22,fontWeight:700,color:T.green,letterSpacing:1}}>{dur}</span>
-              <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{loc.distance} mi · {paceToStr(loc.pace)}</div>
+              <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{loc.distance} mi · {paceMins}:{paceSecs}/mi</div>
             </div>
           </div>
           <Toggle val={loc.daylightOnly} label="Daylight runs only" sub="Exclude windows after sunset" onToggle={()=>setLoc(l=>({...l,daylightOnly:!l.daylightOnly}))}/>
@@ -460,6 +591,18 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
             <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>Temperature</div>
             <div style={{display:"inline-flex",gap:3,background:T.surface2,borderRadius:7,padding:3,border:`1px solid ${T.border2}`}}>
               {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"6px 20px",borderRadius:5,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:11,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
+            </div>
+          </div>
+          <div style={{padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Color</div>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              {Object.entries(ACCENTS).map(([key,acc])=>(
+                <button key={key} onClick={()=>setLoc(l=>({...l,accentColor:key}))}
+                  title={acc.name}
+                  style={{width:loc.accentColor===key?34:28,height:loc.accentColor===key?34:28,borderRadius:"50%",background:acc.dot,border:loc.accentColor===key?`3px solid ${T.text}`:`2px solid transparent`,cursor:"pointer",transition:"all .2s",flexShrink:0,boxShadow:loc.accentColor===key?`0 0 12px ${acc.dot}80`:"none"}}
+                />
+              ))}
+              <div style={{...mono,fontSize:9,color:T.muted,marginLeft:4}}>{ACCENTS[loc.accentColor||"forest"]?.name}</div>
             </div>
           </div>
           <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:9,padding:"12px 24px",cursor:"pointer",letterSpacing:1.5,width:"100%"}}>Save</button>
@@ -496,7 +639,7 @@ export default function App(){
     const set=weather?.today?.sunTimes?.sunset??weather?.tomorrow?.sunTimes?.sunset??19.5;
     return h<rise||h>=set;
   },[settings.theme,weather]);
-  const T=isDark?DARK:LIGHT;
+  const T=applyAccent(isDark?DARK:LIGHT, settings.accentColor||"forest", isDark);
   useEffect(()=>{document.body.style.background=T.bg;},[T]);
 
   const loadWeather=useCallback(async(loc,apiKey)=>{
@@ -624,12 +767,13 @@ export default function App(){
   // For today: only score windows starting from the current hour onward
   const nowHour=view==="today"?new Date().getHours():null;
   const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly,nowHour);
-  const bh=best?hours[best.startIdx]:null;
+  const bh=best?best.startData||hours[best.startIdx]:null;
   const col=bh?sc(best.avgScore,T):T.green;
   const runMins=Math.round(settings.distance*settings.pace/60);
-  const retTotal=bh?(bh.hr*60+runMins):0;
-  const retH=Math.floor(retTotal/60),retM=retTotal%60;
-  const retStr=retM>0?`${retH%12||12}:${String(retM).padStart(2,"0")}${retH>=12?"pm":"am"}`:fmt12(retH);
+  const retDecHr=bh?(best.decHr!=null?best.decHr:bh.hr)+runMins/60:0;
+  const retStr=fmt15(retDecHr);
+  const winStart=best?.decHr!=null?best.decHr:(bh?.hr||0);
+  const winEnd=winStart+2;
   const dirRec=bh?getDirRec(dayData.windDeg,bh.w):{headline:"",detail:""};
   const outfit=bh?getOutfit(bh):null;
   const tu=settings.tempUnit||"F";
@@ -668,7 +812,7 @@ export default function App(){
                   {weather.fetchedAt&&<span style={{color:T.muted}}>· Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
                 </div>
               </div>
-              <button onClick={()=>setShowSettings(true)} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"7px 14px",cursor:"pointer",letterSpacing:1,marginTop:4}}>⚙ Settings</button>
+              <button onClick={()=>setShowSettings(true)} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${T.border2}`,borderRadius:10,cursor:"pointer",fontSize:22,color:T.muted,marginTop:4,flexShrink:0}}>⚙️</button>
             </div>
             <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>{dayData.label.toUpperCase()}</div>
             <div style={{display:"inline-flex",gap:2,marginTop:14,background:T.surface,borderRadius:8,padding:3,border:`1px solid ${T.border2}`}}>
@@ -696,23 +840,23 @@ export default function App(){
                     </div>
                   </div>
                   <div style={{flex:1,minWidth:130}}>
-                    <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Best Window</div>
-                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1}}>{fmt12(bh.hr)} – {fmt12(bh.hr+2)}</div>
-                    <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>Back by ~{retStr}</div>
-                    <div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{settings.distance} mi · {paceToStr(settings.pace)}</div>
+                    <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8,marginLeft:12}}>Best Window</div>
+                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1,marginLeft:12}}>{fmt15(winStart)} – {fmt15(winEnd)}</div>
+                    <div style={{...mono,fontSize:10,color:T.muted,marginTop:10,marginLeft:12}}>Back by ~{retStr}</div>
+                    <div style={{...mono,fontSize:9,color:T.dim,marginTop:3,marginLeft:12}}>{settings.distance} mi · {paceToStr(settings.pace)}</div>
                   </div>
                 </div>
 
-                {/* 5 metric tiles — no score shown */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginTop:22}}>
+                {/* 5 metric tiles — equal size, equidistant */}
+                <div style={{display:"flex",gap:8,marginTop:22}}>
                   {[
                     {icon:"🌡",label:"Temp",   value:displayTemp(bh.t,tu),       color:sc(bh.bd.temperature,T)},
-                    {icon:"🌧",label:"Rain",   value:`${bh.p}%`,                 color:sc(bh.bd.precipitation,T)},
+                    {icon:"🌧",label:"Precip",   value:`${bh.p}%`,                 color:sc(bh.bd.precipitation,T)},
                     {icon:"💨",label:"Wind",   value:`${bh.w}mph`,               color:sc(bh.bd.wind,T)},
                     {icon:"💚",label:"AQI",    value:aqiLabel(bh.aqi||40).l,     color:aqC(bh.aqi||40,T)},
                     {icon:"🌿",label:"Pollen", value:polLabel(bh.pollen||0).l,   color:polC(bh.pollen||0,T)},
                   ].map(({icon,label,value,color})=>(
-                    <div key={label} style={{background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"11px 8px",textAlign:"center",display:"flex",flexDirection:"column",gap:5}}>
+                    <div key={label} style={{flex:1,background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"10px 4px",textAlign:"center",display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
                       <div style={{fontSize:15}}>{icon}</div>
                       <div style={{...mono,fontSize:8,color:T.muted,letterSpacing:1,textTransform:"uppercase"}}>{label}</div>
                       <div style={{...mono,fontSize:11,color,fontWeight:500,letterSpacing:0.5,lineHeight:1.1}}>{value}</div>
@@ -720,16 +864,27 @@ export default function App(){
                   ))}
                 </div>
 
+                {/* Why this window — moved above bars */}
+                {(()=>{const why=getWhyExplainer(bh,best);return(
+                  <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",gap:10}}>
+                    <span style={{color:col,fontSize:15,flexShrink:0,marginTop:1}}>💬</span>
+                    <div>
+                      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>Why this window?</div>
+                      <div style={{...mono,fontSize:11,color:T.text,lineHeight:1.7}}>{why}</div>
+                    </div>
+                  </div>
+                );})()}
+
                 {/* Factor bars */}
                 <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.border}`}}>
                   {[
-                    {key:"precipitation",label:"Rain",    icon:"🌧",actual:`${bh.p}%`},
-                    {key:"wind",         label:"Wind",    icon:"💨",actual:`${bh.w} mph`},
                     {key:"temperature",  label:"Temp",    icon:"🌡",actual:displayTemp(bh.t,tu)},
-                    {key:"aqi",          label:"AQ",      icon:"💚",actual:aqiLabel(bh.aqi||40).l},
-                    {key:"humidity",     label:"Humidity",icon:"💧",actual:`${bh.h}%`},
-                    {key:"uv",           label:"UV",      icon:"☀️",actual:`${bh.u}`},
+                    {key:"precipitation",label:"Precip",  icon:"🌧",actual:`${bh.p}%`},
+                    {key:"wind",         label:"Wind",    icon:"💨",actual:`${bh.w} mph`},
+                    {key:"aqi",          label:"AQI",     icon:"💚",actual:aqiLabel(bh.aqi||40).l},
                     {key:"pollen",       label:"Pollen",  icon:"🌿",actual:polLabel(bh.pollen||0).l},
+                    {key:"uv",           label:"UV",      icon:"☀️",actual:`${bh.u}`},
+                    {key:"humidity",     label:"Humidity",icon:"💧",actual:`${bh.h}%`},
                   ].map(({key,label,icon,actual},fi)=>{
                     const sv=bh.bd[key],fc=sc(sv,T);
                     return(
@@ -746,20 +901,9 @@ export default function App(){
                   })}
                 </div>
 
-                {/* Why this window */}
-                {(()=>{const why=getWhyExplainer(bh,best);return(
-                  <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",gap:10}}>
-                    <span style={{color:col,fontSize:15,flexShrink:0,marginTop:1}}>💬</span>
-                    <div>
-                      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>Why this window?</div>
-                      <div style={{...mono,fontSize:11,color:T.text,lineHeight:1.7}}>{why}</div>
-                    </div>
-                  </div>
-                );})()}
-
                 {/* Share */}
                 <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",gap:10,alignItems:"center"}}>
-                  <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
+                  <button onClick={async()=>{const r=await doShare(bh,best,winStart,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
                   {shareMsg&&<div style={{...mono,fontSize:10,color:T.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
                 </div>
               </div>
@@ -774,7 +918,7 @@ export default function App(){
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   {feedback&&<div style={{...mono,fontSize:9,color:T.green,marginRight:4}}>{feedback==="up"?"Thanks! 🎉":"Got it, thanks"}</div>}
                   {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
-                    <button key={v} onClick={()=>setFeedback(f=>f===v?null:v)}
+                    <button key={v} onClick={()=>{setFeedback(f=>f===v?null:v);if(feedback!==v)submitFeedback(v,bh,best,location?.name,view);}}
                       style={{fontSize:20,background:feedback===v?`${T.green}20`:"none",border:`1px solid ${feedback===v?T.green:T.border2}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",transition:"all .15s",lineHeight:1}}>
                       {e}
                     </button>
@@ -919,7 +1063,7 @@ export default function App(){
           <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:40,paddingTop:28,borderTop:`1px solid ${T.border}`,opacity:0.7}}>
             <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",marginBottom:16}}>
               <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-              <span style={{...cond,fontSize:22,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,margin:"0 2px",textTransform:"uppercase",lineHeight:1}}>RUN</span>
+              <span style={{...cond,fontSize:22,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:2,marginRight:6,textTransform:"uppercase",lineHeight:1}}>RUN</span>
               <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
             </div>
 

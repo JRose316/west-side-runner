@@ -647,7 +647,7 @@ export default function App(){
         {showPWA&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
         {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
 
-        <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"max(56px, calc(env(safe-area-inset-top) + 24px)) 20px 64px"}}>
+        <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"max(56px, calc(env(safe-area-inset-top) + 24px)) 20px 64px",transform:refreshing?"translateY(60px)":`translateY(${Math.min(pullDist*0.5,60)}px)`,transition:refreshing?"transform 0.2s ease":pullDist>0?"none":"transform 0.3s ease"}}>
 
           {/* Header */}
           <div className={`fade ${visible?"in":""}`} style={{marginBottom:28,...dd(0)}}>

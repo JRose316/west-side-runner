@@ -183,7 +183,6 @@ const BAD_DAY_MSGS=[
   {emoji:"🍕",title:"Rest day protocol activated.",sub:"Treat yourself. The miles will be there tomorrow."},
 ];
 
-const sl = s => s>=80?"PERFECT":s>=65?"GOOD":s>=45?"FAIR":"SKIP IT";
 async function doShare(bh, best, dateLabel, locationName, tempUnit) {
   const win=`${fmt12(bh.hr)} – ${fmt12(bh.hr+2)}`;
   const tempStr=tempUnit==="C"?`${toC(bh.t)}°C`:`${bh.t}°F`;

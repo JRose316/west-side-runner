@@ -338,9 +338,9 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   );
   return(
     <div style={{position:"fixed",inset:0,zIndex:100}}>
-      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
-      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"88vh",overflowY:"auto",paddingBottom:40}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"14px 0 6px"}}>
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:40,zIndex:2}}>
+        <div style={{display:"flex",justifyContent:"center",padding:"env(safe-area-inset-top, 14px) 0 6px",paddingTop:"max(14px, env(safe-area-inset-top))"}}>
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 24px 16px",borderBottom:`1px solid ${T.border}`}}>
@@ -365,7 +365,7 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
             <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Theme</div>
             <div style={{display:"flex",gap:6}}>
               {[{id:"auto",label:"☀️→🌙 Auto"},{id:"light",label:"☀️ Light"},{id:"dark",label:"🌙 Dark"}].map(({id,label})=>(
-                <button key={id} onClick={()=>setLoc(l=>({...l,theme:id}))} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:10,letterSpacing:0.5,transition:"all .15s"}}>
+                <button key={id} onClick={()=>{setLoc(l=>({...l,theme:id}));onSave({...loc,theme:id});}} style={{flex:1,padding:"9px 0",borderRadius:8,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:10,letterSpacing:0.5,transition:"all .15s"}}>
                   {label}
                 </button>
               ))}

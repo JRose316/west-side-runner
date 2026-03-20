@@ -405,8 +405,8 @@ function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
   return(
     <div style={{position:"fixed",inset:0,zIndex:100}}>
       <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
-      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:40}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"env(safe-area-inset-top, 14px) 0 6px",paddingTop:"max(14px, env(safe-area-inset-top))"}}>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:"max(40px, calc(env(safe-area-inset-bottom) + 24px))"}}>
+        <div style={{display:"flex",justifyContent:"center",paddingTop:16,paddingBottom:8}}>
           <div style={{width:44,height:4,borderRadius:2,background:T.border2}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 24px 16px",borderBottom:`1px solid ${T.border}`}}>
@@ -720,24 +720,28 @@ export default function App(){
                   </div>
                 );})()}
 
-                {/* Feedback */}
-                <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",flexShrink:0}}>Helpful?</div>
-                  <div style={{display:"flex",gap:8}}>
-                    {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
-                      <button key={v} onClick={()=>setFeedback(f=>f===v?null:v)}
-                        style={{fontSize:18,background:feedback===v?`${T.green}20`:"none",border:`1px solid ${feedback===v?T.green:T.border2}`,borderRadius:8,padding:"5px 10px",cursor:"pointer",transition:"all .15s"}}>
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                  {feedback&&<div style={{...mono,fontSize:9,color:T.green,letterSpacing:1}}>{feedback==="up"?"Thanks! Glad it helped 🎉":"Thanks for the feedback"}</div>}
-                </div>
-
                 {/* Share */}
-                <div style={{marginTop:12,display:"flex",gap:10,alignItems:"center"}}>
+                <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",gap:10,alignItems:"center"}}>
                   <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
                   {shareMsg&&<div style={{...mono,fontSize:10,color:T.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Feedback card */}
+          {bh&&(
+            <div className={`fade ${visible?"in":""}`} style={{...dd(140),marginBottom:16}}>
+              <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"18px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1}}>Was this forecast helpful?</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  {feedback&&<div style={{...mono,fontSize:9,color:T.green,marginRight:4}}>{feedback==="up"?"Thanks! 🎉":"Got it, thanks"}</div>}
+                  {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
+                    <button key={v} onClick={()=>setFeedback(f=>f===v?null:v)}
+                      style={{fontSize:20,background:feedback===v?`${T.green}20`:"none",border:`1px solid ${feedback===v?T.green:T.border2}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",transition:"all .15s",lineHeight:1}}>
+                      {e}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

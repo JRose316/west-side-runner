@@ -290,7 +290,7 @@ function LocationScreen({onGrant,onSkip}){
       <div style={{fontSize:52,marginBottom:20}}>🏃</div>
       <div style={{display:"flex",alignItems:"baseline",marginBottom:12}}>
         <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-        <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginRight:4,textTransform:"uppercase",lineHeight:1}}>RUN</span>
+        <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
         <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
       </div>
       <div style={{...mono,fontSize:11,color:T.muted,marginBottom:40,lineHeight:1.9,maxWidth:300}}>Live scored run windows with outfit picks, wind direction, air quality & pollen.</div>
@@ -494,7 +494,7 @@ export default function App(){
       <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:14,textAlign:"center",padding:20}}>
         <div style={{display:"flex",alignItems:"baseline"}}>
           <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-          <span style={{...cond,fontSize:50,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginRight:4,textTransform:"uppercase",lineHeight:1}}>RUN</span>
+          <span style={{...cond,fontSize:50,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
           <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
         </div>
         <div style={{...mono,fontSize:11,color:T.muted,letterSpacing:1}}>{location?.name||"Fetching weather..."}</div>
@@ -543,7 +543,7 @@ export default function App(){
               <div>
                 <div style={{display:"flex",alignItems:"baseline"}}>
                   <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-                  <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginRight:4,textTransform:"uppercase",lineHeight:0.9}}>RUN</span>
+                  <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:0.9}}>RUN</span>
                   <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
                 </div>
                 <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,marginTop:6}}>{location?.name||"Upper West Side, NYC"}</div>

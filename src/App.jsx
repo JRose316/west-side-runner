@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 // ─── Weights & Config ──────────────────────────────────────────────────────────
 const W = { precipitation:0.28, wind:0.20, temperature:0.18, humidity:0.08, uv:0.06, aqi:0.15, pollen:0.05 };
 const DEFAULT_LOC = { lat:40.794, lon:-73.9916, name:"Upper West Side, NYC" };
-const DEFAULT_SETTINGS = { distance:5, pace:9, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV" };
+const DEFAULT_SETTINGS = { distance:5, pace:9, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV", daylightOnly:false };
 
 // ─── Seasonal Fallback ─────────────────────────────────────────────────────────
 const SEA = {
@@ -118,10 +118,17 @@ function scoreHour(h) {
   const p = Math.max(0, 100 - (h.p ?? 0) * 0.8), ww = Math.max(0, 100 - (h.w ?? 0) * 4), t = Math.max(0, 100 - Math.abs((h.t ?? 62) - 62.5) * 3.5), hm = Math.max(0, 100 - (h.h ?? 0) * 0.9), u = Math.max(0, 100 - (h.u ?? 0) * 9), aq = sAQI(h.aqi ?? 40), po = sPollen(h.pollen ?? 0);
   return { total: Math.round(p * W.precipitation + ww * W.wind + t * W.temperature + hm * W.humidity + u * W.uv + aq * W.aqi + po * W.pollen), bd: { precipitation: Math.round(p), wind: Math.round(ww), temperature: Math.round(t), humidity: Math.round(hm), uv: Math.round(u), aqi: Math.round(aq), pollen: Math.round(po) } };
 }
-function processHours(arr) {
+function processHours(arr, sunTimes, daylightOnly) {
   const hours = arr.map(h => { const s = scoreHour(h); return { ...h, score: s.total, bd: s.bd }; });
   let best = null;
-  for (let i = 0; i < hours.length - 1; i++) { const avg = Math.round((hours[i].score + hours[i + 1].score) / 2); if (!best || avg > best.avgScore) best = { startIdx: i, avgScore: avg }; }
+  for (let i = 0; i < hours.length - 1; i++) {
+    if (daylightOnly && sunTimes) {
+      const isNight = hours[i].hr < sunTimes.sunrise || hours[i].hr >= sunTimes.sunset || hours[i+1].hr >= sunTimes.sunset;
+      if (isNight) continue;
+    }
+    const avg = Math.round((hours[i].score + hours[i + 1].score) / 2);
+    if (!best || avg > best.avgScore) best = { startIdx: i, avgScore: avg };
+  }
   // If best window is truly terrible, show the bad day screen instead
   if (best && best.avgScore < 35) best = null;
   return { hours, best };
@@ -364,6 +371,15 @@ function SettingsPanel({ settings, locationName, onSave, onClose, onResetLocatio
           <div style={{ ...cond, fontSize:28, fontWeight:700, color:C.green, letterSpacing:2 }}>{dur}</div>
           <div style={{ ...mono, fontSize:9, color:C.dim, marginTop:4 }}>{loc.distance} mi at {loc.pace}:00/mi</div>
         </div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingTop:4 }}>
+          <div>
+            <div style={{ ...mono, fontSize:9, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>Daylight runs only</div>
+            <div style={{ ...mono, fontSize:8, color:C.dim, marginTop:4 }}>Exclude windows after sunset</div>
+          </div>
+          <div onClick={() => setLoc(l => ({...l, daylightOnly:!l.daylightOnly}))} style={{ width:42, height:24, borderRadius:12, background:loc.daylightOnly?C.green:C.border2, cursor:"pointer", position:"relative", transition:"background .2s", flexShrink:0 }}>
+            <div style={{ position:"absolute", top:3, left:loc.daylightOnly?20:3, width:18, height:18, borderRadius:"50%", background:loc.daylightOnly?C.bg:C.muted, transition:"left .2s" }}/>
+          </div>
+        </div>
 
         <button onClick={() => { onSave(loc); onClose(); }} style={{ ...mono, fontSize:11, color:C.bg, background:C.green, border:"none", borderRadius:8, padding:"12px 24px", cursor:"pointer", letterSpacing:1.5 }}>Save</button>
       </div>
@@ -483,7 +499,7 @@ export default function App() {
   if (!weather) return null;
 
   const dayData = view === "today" ? weather.today : weather.tomorrow;
-  const { hours, best } = processHours(dayData.hours || []);
+  const { hours, best } = processHours(dayData.hours || [], sun, settings.daylightOnly);
   const bh = best ? hours[best.startIdx] : null;
   const col = bh ? sc(best.avgScore) : C.green;
   const sun = dayData.sunTimes || { sunrise:6.5, sunset:19.5 };

@@ -3,8 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Live scored run windows with weather, air quality & pollen — for wherever you are." />
-    <title>tempRUNture</title>
+
+    <!-- Primary SEO -->
+    <title>tempRUNture — Find Your Perfect Time to Run</title>
+    <meta name="description" content="tempRUNture scores every hour of the day based on rain, wind, temperature, air quality, pollen and UV to tell you the exact best window to run. Free, live weather, works anywhere." />
+    <meta name="keywords" content="best time to run, running weather forecast, when to run today, run weather app, running conditions, air quality running, pollen running, weather score running" />
+    <link rel="canonical" href="https://temprunture.com" />
+
+    <!-- Open Graph (iMessage, social previews) -->
+    <meta property="og:title" content="tempRUNture — Find Your Perfect Time to Run" />
+    <meta property="og:description" content="Scores every hour of the day so you know exactly when to lace up. Live weather, air quality, pollen, outfit picks and more." />
+    <meta property="og:url" content="https://temprunture.com" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://temprunture.com/icon-dark-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:site_name" content="tempRUNture" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="tempRUNture — Find Your Perfect Time to Run" />
+    <meta name="twitter:description" content="Scores every hour of the day so you know exactly when to lace up." />
+    <meta name="twitter:image" content="https://temprunture.com/icon-dark-512.png" />
+
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,13 +34,36 @@
     <meta name="apple-mobile-web-app-title" content="tempRUNture" />
     <link rel="apple-touch-icon" href="/icon-dark-512.png" />
     <link rel="icon" type="image/png" href="/icon-dark-512.png" />
+
+    <!-- Theme color -->
     <meta name="theme-color" content="#050c08" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)" />
-    <meta property="og:title" content="tempRUNture" />
-    <meta property="og:description" content="Live scored run windows with weather, air quality & pollen." />
-    <meta property="og:url" content="https://temprunture.com" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://temprunture.com/icon-dark-512.png" />
+
+    <!-- Structured data for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "tempRUNture",
+      "url": "https://temprunture.com",
+      "description": "tempRUNture scores every hour of the day based on rain, wind, temperature, air quality, pollen and UV index to tell you the perfect window to run. Free, live weather data, works anywhere in the world.",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Live hourly weather scoring",
+        "Air quality and pollen tracking",
+        "Outfit recommendations",
+        "Wind direction advice",
+        "GPS-based local forecast",
+        "Light and dark mode"
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

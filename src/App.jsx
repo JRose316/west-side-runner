@@ -119,10 +119,12 @@ function scoreHour(h){
   const p=Math.max(0,100-(h.p??0)*0.8),ww=Math.max(0,100-(h.w??0)*4),t=Math.max(0,100-Math.abs((h.t??62)-62.5)*3.5),hm=Math.max(0,100-(h.h??0)*0.9),u=Math.max(0,100-(h.u??0)*9),aq=sAQI(h.aqi??40),po=sPollen(h.pollen??0);
   return{total:Math.round(p*W.precipitation+ww*W.wind+t*W.temperature+hm*W.humidity+u*W.uv+aq*W.aqi+po*W.pollen),bd:{precipitation:Math.round(p),wind:Math.round(ww),temperature:Math.round(t),humidity:Math.round(hm),uv:Math.round(u),aqi:Math.round(aq),pollen:Math.round(po)}};
 }
-function processHours(arr,sunTimes,daylightOnly){
+function processHours(arr,sunTimes,daylightOnly,currentHour){
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
   for(let i=0;i<hours.length-1;i++){
+    // Skip past hours when viewing today (need at least 30 min into the hour)
+    if(currentHour!=null&&hours[i].hr<currentHour)continue;
     if(daylightOnly&&sunTimes){const isNight=hours[i].hr<sunTimes.sunrise||hours[i].hr>=sunTimes.sunset||hours[i+1].hr>=sunTimes.sunset;if(isNight)continue;}
     const avg=Math.round((hours[i].score+hours[i+1].score)/2);
     if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg};
@@ -619,7 +621,9 @@ export default function App(){
 
   const dayData=view==="today"?weather.today:weather.tomorrow;
   const sun=dayData.sunTimes||{sunrise:6.5,sunset:19.5};
-  const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly);
+  // For today: only score windows starting from the current hour onward
+  const nowHour=view==="today"?new Date().getHours():null;
+  const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly,nowHour);
   const bh=best?hours[best.startIdx]:null;
   const col=bh?sc(best.avgScore,T):T.green;
   const runMins=Math.round(settings.distance*settings.pace/60);
@@ -861,7 +865,7 @@ export default function App(){
                 {label:"Afternoon",    icon:"🌤",range:[13,17]},
                 {label:"Evening",      icon:"🌆",range:[18,21]},
               ].map(({label,icon,range})=>{
-                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]);
+                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]&&(view!=="today"||h.hr>=nowHour));
                 if(group.length===0)return null;
                 const bestH=group.reduce((a,b)=>a.score>b.score?a:b);
                 const avgScore=Math.round(group.reduce((s,h)=>s+h.score,0)/group.length);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { Analytics } from '@vercel/analytics/react';
 
 // ─── Themes ────────────────────────────────────────────────────────────────────
 const DARK = {
@@ -789,6 +790,7 @@ export default function App(){
           <div style={{textAlign:"center",marginTop:10,...mono,fontSize:8,color:T.dim,letterSpacing:2,opacity:0.5}}>{weather.isLive?"LIVE · TOMORROW.IO + OPEN-METEO":"SEASONAL ESTIMATE"} · TEMPRUNTURE.COM</div>
         </div>
       </div>
+      <Analytics />
     </ThemeCtx.Provider>
   );
 }

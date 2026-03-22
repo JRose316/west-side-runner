@@ -154,6 +154,8 @@ function processHours(arr,sunTimes,daylightOnly,currentHour){
       const t=q/4;
       const decHr=hours[i].hr+t;
       if(currentHour!=null&&decHr<currentHour)continue;
+      // Hard limits: no window starting before 5am or ending after 11pm
+      if(decHr<5||decHr+2>23)continue;
       if(daylightOnly&&sunTimes){
         const endHr=decHr+2;
         if(decHr<sunTimes.sunrise||endHr>sunTimes.sunset)continue;
@@ -628,6 +630,7 @@ export default function App(){
   const [touchStartY,setTouchStartY]=useState(null);
   const [pullDist,setPullDist]=useState(0);
   const [feedback,setFeedback]=useState(null); // 'up' | 'down' | null
+  const [expandedHour,setExpandedHour]=useState(null); // hr number of expanded card
 
   // Theme
   const isDark=useMemo(()=>{
@@ -817,7 +820,7 @@ export default function App(){
             <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>{dayData.label.toUpperCase()}</div>
             <div style={{display:"inline-flex",gap:2,marginTop:14,background:T.surface,borderRadius:8,padding:3,border:`1px solid ${T.border2}`}}>
               {[{id:"today",label:"Today"},{id:"tomorrow",label:"Tomorrow"}].map(({id,label})=>(
-                <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setFeedback(null);setTimeout(()=>setVisible(true),40);}}
+                <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setFeedback(null);setExpandedHour(null);setTimeout(()=>setVisible(true),40);}}
                   style={{padding:"8px 22px",borderRadius:6,border:"none",cursor:"pointer",background:view===id?T.green:"transparent",color:view===id?T.bg:T.muted,...mono,fontSize:11,fontWeight:view===id?500:300,letterSpacing:1.5,textTransform:"uppercase"}}>{label}
                 </button>
               ))}
@@ -1034,11 +1037,67 @@ export default function App(){
                       {group.map(h=>{
                         const hfc=sc(h.score,T);
                         const isThisBest=best&&h.hr===hours[best.startIdx]?.hr;
+                        const isExpanded=expandedHour===h.hr;
                         return(
-                          <div key={h.hr} style={{background:isThisBest?`${hfc}20`:T.surface,borderRadius:6,padding:"6px 9px",border:`1px solid ${isThisBest?hfc+"60":T.border}`,minWidth:54}}>
-                            <div style={{...mono,fontSize:9,color:isThisBest?hfc:T.muted}}>{fmt12(h.hr)}</div>
-                            <div style={{...mono,fontSize:11,color:hfc,fontWeight:500,marginTop:1}}>{h.score}</div>
-                            <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{displayTemp(h.t,tu)}</div>
+                          <div key={h.hr} style={{width:"100%"}}>
+                            {/* Tappable hour pill */}
+                            <div
+                              onClick={()=>setExpandedHour(isExpanded?null:h.hr)}
+                              style={{background:isThisBest?`${hfc}20`:T.surface,borderRadius:isExpanded?"6px 6px 0 0":6,padding:"6px 9px",border:`1px solid ${isExpanded?hfc+"80":isThisBest?hfc+"60":T.border}`,minWidth:54,cursor:"pointer",display:"inline-flex",gap:16,alignItems:"center",userSelect:"none",width:"100%",justifyContent:"space-between"}}>
+                              <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                                <div>
+                                  <div style={{...mono,fontSize:9,color:isThisBest||isExpanded?hfc:T.muted}}>{fmt12(h.hr)}</div>
+                                  <div style={{...mono,fontSize:11,color:hfc,fontWeight:500,marginTop:1}}>{h.score}</div>
+                                  <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{displayTemp(h.t,tu)}</div>
+                                </div>
+                                {isThisBest&&<div style={{...mono,fontSize:8,color:hfc,letterSpacing:1}}>★ BEST</div>}
+                              </div>
+                              <div style={{...mono,fontSize:10,color:T.dim}}>{isExpanded?"▲":"▼"}</div>
+                            </div>
+                            {/* Expanded comparison panel */}
+                            {isExpanded&&(()=>{
+                              const metrics=[
+                                {label:"Temp",    val:displayTemp(h.t,tu),    bestVal:bh?displayTemp(bh.t,tu):"-",    score:h.bd.temperature,   bestScore:bh?.bd.temperature},
+                                {label:"Precip",  val:`${h.p}%`,              bestVal:bh?`${bh.p}%`:"-",              score:h.bd.precipitation, bestScore:bh?.bd.precipitation},
+                                {label:"Wind",    val:`${h.w}mph`,            bestVal:bh?`${bh.w}mph`:"-",            score:h.bd.wind,          bestScore:bh?.bd.wind},
+                                {label:"AQI",     val:aqiLabel(h.aqi||40).l,  bestVal:bh?aqiLabel(bh.aqi||40).l:"-", score:h.bd.aqi,            bestScore:bh?.bd.aqi},
+                                {label:"Pollen",  val:polLabel(h.pollen||0).l,bestVal:bh?polLabel(bh.pollen||0).l:"-",score:h.bd.pollen,        bestScore:bh?.bd.pollen},
+                              ];
+                              const hfc2=sc(h.score,T);
+                              const bfc=bh?sc(best.avgScore,T):T.dim;
+                              return(
+                                <div style={{background:T.surface2,borderRadius:"0 0 8px 8px",border:`1px solid ${hfc2}80`,borderTop:"none",padding:"12px 10px"}}>
+                                  {/* Header row */}
+                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8}}>
+                                    <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1}}></div>
+                                    <div style={{...mono,fontSize:8,color:hfc2,letterSpacing:1,textAlign:"center"}}>{fmt12(h.hr)}</div>
+                                    <div style={{...mono,fontSize:8,color:bfc,letterSpacing:1,textAlign:"center"}}>{bh?`${fmt15(winStart)} ★`:"Best"}</div>
+                                  </div>
+                                  {/* Score row */}
+                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${T.border}`}}>
+                                    <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:0.5}}>Score</div>
+                                    <div style={{...mono,fontSize:12,color:hfc2,fontWeight:700,textAlign:"center"}}>{h.score}</div>
+                                    <div style={{...mono,fontSize:12,color:bfc,fontWeight:700,textAlign:"center"}}>{bh?best.avgScore:"—"}</div>
+                                  </div>
+                                  {/* Metric rows */}
+                                  {metrics.map(({label,val,bestVal,score,bestScore})=>{
+                                    const mc=sc(score,T);
+                                    const bc=bestScore!=null?sc(bestScore,T):T.dim;
+                                    const diff=bestScore!=null?bestScore-score:null;
+                                    return(
+                                      <div key={label} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:7,alignItems:"center"}}>
+                                        <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:0.5}}>{label}</div>
+                                        <div style={{...mono,fontSize:10,color:mc,textAlign:"center",fontWeight:500}}>{val}</div>
+                                        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                                          <div style={{...mono,fontSize:10,color:bc,fontWeight:500}}>{bestVal}</div>
+                                          {diff!=null&&diff!==0&&<div style={{...mono,fontSize:7,color:diff>0?T.green:T.skip}}>{diff>0?`+${diff}`:diff}</div>}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}

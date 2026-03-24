@@ -132,12 +132,6 @@ function scoreHour(h){
   const p=Math.max(0,100-(h.p??0)*0.8),ww=Math.max(0,100-(h.w??0)*4),t=Math.max(0,100-Math.abs((h.t??62)-62.5)*3.5),hm=Math.max(0,100-(h.h??0)*0.9),u=Math.max(0,100-(h.u??0)*9),aq=sAQI(h.aqi??40),po=sPollen(h.pollen??0);
   return{total:Math.round(p*W.precipitation+ww*W.wind+t*W.temperature+hm*W.humidity+u*W.uv+aq*W.aqi+po*W.pollen),bd:{precipitation:Math.round(p),wind:Math.round(ww),temperature:Math.round(t),humidity:Math.round(hm),uv:Math.round(u),aqi:Math.round(aq),pollen:Math.round(po)}};
 }
-function interpHour(h1,h2,t){
-  // Linearly interpolate between two hourly readings at fraction t (0=h1, 1=h2)
-  if(!h1||!h2)return h1||h2;
-  const lerp=(a,b)=>Math.round(a+(b-a)*t);
-  return{hr:h1.hr+t,t:lerp(h1.t,h2.t),p:lerp(h1.p,h2.p),w:lerp(h1.w,h2.w),wd:lerp(h1.wd,h2.wd),h:lerp(h1.h,h2.h),u:parseFloat((h1.u+(h2.u-h1.u)*t).toFixed(1)),aqi:lerp(h1.aqi,h2.aqi),pollen:lerp(h1.pollen,h2.pollen)};
-}
 function fmt15(decHr){
   const h=Math.floor(decHr),m=Math.round((decHr-h)*60);
   if(m===0)return fmt12(h);
@@ -145,33 +139,38 @@ function fmt15(decHr){
   const suf=h<12||h===24?"am":"pm";
   return`${base}:${String(m).padStart(2,"0")}${suf}`;
 }
+function safeNum(v,fallback=0){ const n=Number(v); return isFinite(n)?n:fallback; }
+function interpHour(h1,h2,t){
+  if(!h1)return h2; if(!h2)return h1;
+  const l=(a,b,fb=0)=>Math.round(safeNum(a,fb)+(safeNum(b,fb)-safeNum(a,fb))*t);
+  return{
+    hr:safeNum(h1.hr)+t,
+    t:l(h1.t,h2.t,60),p:l(h1.p,h2.p,0),w:l(h1.w,h2.w,0),
+    wd:l(h1.wd,h2.wd,270),h:l(h1.h,h2.h,50),
+    u:parseFloat((safeNum(h1.u,0)+(safeNum(h2.u,0)-safeNum(h1.u,0))*t).toFixed(1)),
+    aqi:l(h1.aqi,h2.aqi,40),pollen:l(h1.pollen,h2.pollen,0)
+  };
+}
 function processHours(arr,sunTimes,daylightOnly,currentHour){
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
-  // Check every 15-minute mark for the best 2-hour window.
-  // Loop goes to hours.length-1 so we can start a window at any hour.
-  // The end point 2hrs later clamps to the last available hour if needed.
   for(let i=0;i<hours.length-1;i++){
     for(let q=0;q<4;q++){
       const t=q/4;
-      const decHr=hours[i].hr+t;
+      const decHr=safeNum(hours[i].hr)+t;
       if(currentHour!=null&&decHr<currentHour)continue;
-      // Hard limits: no window starting before 5am or ending after 11pm
       if(decHr<5||decHr+2>23)continue;
       if(daylightOnly&&sunTimes){
-        const endHr=decHr+2;
-        if(decHr<sunTimes.sunrise||endHr>sunTimes.sunset)continue;
+        if(decHr<sunTimes.sunrise||decHr+2>sunTimes.sunset)continue;
       }
-      // Score start point — blend between this hour and the next
-      const startBlend=interpHour(hours[i],hours[Math.min(i+1,hours.length-1)],t);
-      // Score end point 2hrs later — clamp if near end of data
-      const endIdx=Math.min(i+2,hours.length-1);
-      const endBlend=endIdx<hours.length-1
-        ?interpHour(hours[endIdx],hours[endIdx+1],t)
-        :hours[endIdx];
+      const h2=hours[Math.min(i+1,hours.length-1)];
+      const startBlend=interpHour(hours[i],h2,t);
+      const ei=Math.min(i+2,hours.length-1);
+      const endBlend=ei<hours.length-1?interpHour(hours[ei],hours[ei+1],t):hours[ei];
       const s1=scoreHour(startBlend),s2=scoreHour(endBlend);
+      if(!isFinite(s1.total)||!isFinite(s2.total))continue;
       const avg=Math.round((s1.total+s2.total)/2);
-      if(!best||avg>best.avgScore)best={startIdx:i,startQ:q,avgScore:avg,decHr,startData:{...startBlend,score:s1.total,bd:s1.bd}};
+      if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg,decHr,startData:{...startBlend,score:s1.total,bd:s1.bd}};
     }
   }
   if(best&&best.avgScore<35)best=null;
@@ -774,10 +773,10 @@ export default function App(){
   // For today: only score windows starting from the current hour onward
   const nowHour=view==="today"?new Date().getHours():null;
   const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly,nowHour);
-  const bh=best?best.startData||hours[best.startIdx]:null;
+  const bh=best?(best.startData||hours[best.startIdx]):null;
   const col=bh?sc(best.avgScore,T):T.green;
   const runMins=Math.round(settings.distance*settings.pace/60);
-  const retDecHr=bh?(best.decHr!=null?best.decHr:bh.hr)+runMins/60:0;
+  const retDecHr=bh?winStart+runMins/60:0;
   const retStr=fmt15(retDecHr);
   const winStart=best?.decHr!=null?best.decHr:(bh?.hr||0);
   const winEnd=winStart+2;

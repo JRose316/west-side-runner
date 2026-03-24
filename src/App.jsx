@@ -110,12 +110,12 @@ async function fetchLiveWeather(lat,lon,apiKey){
   const hourlyArr=tData?.timelines?.hourly;
   if(!Array.isArray(hourlyArr))throw new Error("Unexpected shape");
   const aqMap={};
-  aData?.hourly?.time?.forEach((t,i)=>{aqMap[t.slice(0,13)]={aqi:aData.hourly.us_aqi?.[i]??40,pollen:(aData.hourly.grass_pollen?.[i]??0)+(aData.hourly.birch_pollen?.[i]??0)+(aData.hourly.ragweed_pollen?.[i]??0)};});
+  aData?.hourly?.time?.forEach((t,i)=>{const d=new Date(t);const key=d.toLocaleDateString("en-CA")+"T"+String(d.getHours()).padStart(2,"0");aqMap[key]={aqi:aData.hourly.us_aqi?.[i]??40,pollen:(aData.hourly.grass_pollen?.[i]??0)+(aData.hourly.birch_pollen?.[i]??0)+(aData.hourly.ragweed_pollen?.[i]??0)};});
   const parseSun=str=>{if(!str)return null;const d=new Date(str);return d.getHours()+d.getMinutes()/60;};
   const now=new Date(),tom=new Date(now);tom.setDate(now.getDate()+1);
   const toDS=d=>d.toLocaleDateString("en-CA"),todayStr=toDS(now),tomStr=toDS(tom);
   const getSun=ds=>{const i=sData?.daily?.time?.indexOf(ds)??-1;if(i<0)return{sunrise:6.5,sunset:19.5};return{sunrise:parseSun(sData.daily.sunrise[i])??6.5,sunset:parseSun(sData.daily.sunset[i])??19.5};};
-  const buildDay=ds=>{const hrs=[];for(const entry of hourlyArr){const t=entry.time;if(!t.startsWith(ds))continue;const hr=parseInt(t.slice(11,13)),v=entry.values,key=t.slice(0,13),aq=aqMap[key]||{aqi:40,pollen:0};hrs.push({hr,t:Math.round(v.temperature??60),p:Math.round(v.precipitationProbability??10),w:Math.round(v.windSpeed??8),wd:Math.round(v.windDirection??270),h:Math.round(v.humidity??60),u:parseFloat((v.uvIndex??0).toFixed(1)),aqi:Math.round(aq.aqi),pollen:Math.round(aq.pollen)});}const mid=hrs.filter(h=>h.hr>=10&&h.hr<=14);return{hrs,windDeg:mid.length?Math.round(mid.reduce((s,h)=>s+h.wd,0)/mid.length):270};};
+  const buildDay=ds=>{const hrs=[];for(const entry of hourlyArr){const t=entry.time;const localDate=new Date(t);const localDs=localDate.toLocaleDateString("en-CA");if(localDs!==ds)continue;const hr=localDate.getHours(),v=entry.values,localKey=localDs+"T"+String(hr).padStart(2,"0"),aq=aqMap[localKey]||{aqi:40,pollen:0};hrs.push({hr,t:Math.round(v.temperature??60),p:Math.round(v.precipitationProbability??10),w:Math.round(v.windSpeed??8),wd:Math.round(v.windDirection??270),h:Math.round(v.humidity??60),u:parseFloat((v.uvIndex??0).toFixed(1)),aqi:Math.round(aq.aqi),pollen:Math.round(aq.pollen)});}const mid=hrs.filter(h=>h.hr>=10&&h.hr<=14);return{hrs,windDeg:mid.length?Math.round(mid.reduce((s,h)=>s+h.wd,0)/mid.length):270};};
   const fmtL=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const td=buildDay(todayStr),tm=buildDay(tomStr);
   return{isLive:true,fetchedAt:Date.now(),today:{label:fmtL(now),hours:td.hrs,windDeg:td.windDeg,sunTimes:getSun(todayStr)},tomorrow:{label:fmtL(tom),hours:tm.hrs,windDeg:tm.windDeg,sunTimes:getSun(tomStr)}};

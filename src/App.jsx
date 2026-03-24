@@ -169,7 +169,7 @@ function getOutfit(h){
   const L=[];
   if(feel<=25)L.push({slot:"Top",icon:"🧥",item:"Heavy insulated jacket",note:"windproof shell essential"});
   else if(feel<=35)L.push({slot:"Top",icon:"🧥",item:"Thermal running jacket",note:"full zip, wind resistant"});
-  else if(feel<=45)L.push({slot:"Top",icon:"🫙",item:"Half-zip + base layer",note:"moisture-wicking base underneath"});
+  else if(feel<=45)L.push({slot:"Top",icon:"👕",item:"Half-zip + base layer",note:"moisture-wicking base underneath"});
   else if(feel<=55)L.push({slot:"Top",icon:"👕",item:"Long sleeve running shirt",note:feel<50?"consider a light vest":"lightweight fabric"});
   else if(feel<=65)L.push({slot:"Top",icon:"👕",item:"Short sleeve + arm warmers",note:"easy to strip mid-run"});
   else if(feel<=75)L.push({slot:"Top",icon:"👕",item:"Short sleeve tech shirt",note:"breathable"});

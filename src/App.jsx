@@ -139,39 +139,18 @@ function fmt15(decHr){
   const suf=h<12||h===24?"am":"pm";
   return`${base}:${String(m).padStart(2,"0")}${suf}`;
 }
-function safeNum(v,fallback=0){ const n=Number(v); return isFinite(n)?n:fallback; }
-function interpHour(h1,h2,t){
-  if(!h1)return h2; if(!h2)return h1;
-  const l=(a,b,fb=0)=>Math.round(safeNum(a,fb)+(safeNum(b,fb)-safeNum(a,fb))*t);
-  return{
-    hr:safeNum(h1.hr)+t,
-    t:l(h1.t,h2.t,60),p:l(h1.p,h2.p,0),w:l(h1.w,h2.w,0),
-    wd:l(h1.wd,h2.wd,270),h:l(h1.h,h2.h,50),
-    u:parseFloat((safeNum(h1.u,0)+(safeNum(h2.u,0)-safeNum(h1.u,0))*t).toFixed(1)),
-    aqi:l(h1.aqi,h2.aqi,40),pollen:l(h1.pollen,h2.pollen,0)
-  };
-}
 function processHours(arr,sunTimes,daylightOnly,currentHour){
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
   for(let i=0;i<hours.length-1;i++){
-    for(let q=0;q<4;q++){
-      const t=q/4;
-      const decHr=safeNum(hours[i].hr)+t;
-      if(currentHour!=null&&decHr<currentHour)continue;
-      if(decHr<5||decHr+2>23)continue;
-      if(daylightOnly&&sunTimes){
-        if(decHr<sunTimes.sunrise||decHr+2>sunTimes.sunset)continue;
-      }
-      const h2=hours[Math.min(i+1,hours.length-1)];
-      const startBlend=interpHour(hours[i],h2,t);
-      const ei=Math.min(i+2,hours.length-1);
-      const endBlend=ei<hours.length-1?interpHour(hours[ei],hours[ei+1],t):hours[ei];
-      const s1=scoreHour(startBlend),s2=scoreHour(endBlend);
-      if(!isFinite(s1.total)||!isFinite(s2.total))continue;
-      const avg=Math.round((s1.total+s2.total)/2);
-      if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg,decHr,startData:{...startBlend,score:s1.total,bd:s1.bd}};
+    const hr=hours[i].hr;
+    if(currentHour!=null&&hr<currentHour)continue;
+    if(hr<5||hr+2>23)continue;
+    if(daylightOnly&&sunTimes){
+      if(hr<sunTimes.sunrise||hr+2>sunTimes.sunset)continue;
     }
+    const avg=Math.round((hours[i].score+hours[i+1].score)/2);
+    if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg};
   }
   if(best&&best.avgScore<35)best=null;
   return{hours,best};
@@ -275,7 +254,7 @@ async function submitFeedback(vote, bh, best, location, view) {
 }
 
 async function doShare(bh,best,winStart,dateLabel,locationName,tempUnit){
-  const win=`${fmt15(winStart)} – ${fmt15(winStart+2)}`;
+  const win=`${fmt12(winStart)} – ${fmt12(winStart+2)}`;
   const tempStr=tempUnit==="C"?`${toC(bh.t)}°C`:`${bh.t}°F`;
   const dow=dateLabel.split(",")[0];
   const text=`🏃 ${locationName} · ${dow}\n⏰ ${win} · ${best.avgScore}/100 ${sl(best.avgScore)}\n${tempStr} · ${bh.p}% precip · ${bh.w}mph wind`;
@@ -773,13 +752,14 @@ export default function App(){
   // For today: only score windows starting from the current hour onward
   const nowHour=view==="today"?new Date().getHours():null;
   const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly,nowHour);
-  const bh=best?(best.startData||hours[best.startIdx]):null;
+  const bh=best?hours[best.startIdx]:null;
   const col=bh?sc(best.avgScore,T):T.green;
   const runMins=Math.round(settings.distance*settings.pace/60);
-  const winStart=best?.decHr!=null?best.decHr:(bh?.hr||0);
+  const winStart=bh?.hr||0;
   const winEnd=winStart+2;
-  const retDecHr=bh?winStart+runMins/60:0;
-  const retStr=fmt15(retDecHr);
+  const retTotal=bh?winStart*60+runMins:0;
+  const retH=Math.floor(retTotal/60),retM=retTotal%60;
+  const retStr=retM>0?`${retH%12||12}:${String(retM).padStart(2,"0")}${retH>=12?"pm":"am"}`:fmt12(retH);
   const dirRec=bh?getDirRec(dayData.windDeg,bh.w):{headline:"",detail:""};
   const outfit=bh?getOutfit(bh):null;
   const tu=settings.tempUnit||"F";
@@ -847,7 +827,7 @@ export default function App(){
                   </div>
                   <div style={{flex:1,minWidth:130}}>
                     <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8,marginLeft:12}}>Best Window</div>
-                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1,marginLeft:12}}>{fmt15(winStart)} – {fmt15(winEnd)}</div>
+                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1,marginLeft:12}}>{fmt12(winStart)} – {fmt12(winEnd)}</div>
                     <div style={{...mono,fontSize:10,color:T.muted,marginTop:10,marginLeft:12}}>Back by ~{retStr}</div>
                     <div style={{...mono,fontSize:9,color:T.dim,marginTop:3,marginLeft:12}}>{settings.distance} mi · {paceToStr(settings.pace)}</div>
                   </div>
@@ -1074,7 +1054,7 @@ export default function App(){
                                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8}}>
                                     <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1}}></div>
                                     <div style={{...mono,fontSize:8,color:hfc2,letterSpacing:1,textAlign:"center"}}>{fmt12(h.hr)}</div>
-                                    <div style={{...mono,fontSize:8,color:bfc,letterSpacing:1,textAlign:"center"}}>{bh?`${fmt15(winStart)} ★`:"Best"}</div>
+                                    <div style={{...mono,fontSize:8,color:bfc,letterSpacing:1,textAlign:"center"}}>{bh?`${fmt12(winStart)} ★`:"Best"}</div>
                                   </div>
                                   {/* Score row */}
                                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${T.border}`}}>

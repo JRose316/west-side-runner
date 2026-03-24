@@ -144,7 +144,7 @@ function processHours(arr,sunTimes,daylightOnly,currentHour){
   let best=null;
   for(let i=0;i<hours.length-1;i++){
     const hr=hours[i].hr;
-    if(currentHour!=null&&hr<currentHour)continue;
+    if(currentHour!=null&&hr<=currentHour)continue;
     if(hr<5||hr+2>23)continue;
     if(daylightOnly&&sunTimes){
       if(hr<sunTimes.sunrise||hr+2>sunTimes.sunset)continue;
@@ -995,7 +995,7 @@ export default function App(){
                 {label:"Afternoon",    icon:"🌤",range:[13,17]},
                 {label:"Evening",      icon:"🌆",range:[18,21]},
               ].map(({label,icon,range})=>{
-                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]&&(view!=="today"||h.hr>=nowHour));
+                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]&&(view!=="today"||h.hr>nowHour));
                 if(group.length===0)return null;
                 const bestH=group.reduce((a,b)=>a.score>b.score?a:b);
                 const avgScore=Math.round(group.reduce((s,h)=>s+h.score,0)/group.length);

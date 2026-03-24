@@ -1,63 +1,32 @@
-import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
-
-// ─── Themes ────────────────────────────────────────────────────────────────────
-const DARK = {
-  bg:"#050c08", surface:"#08120a", surface2:"#0d1a10",
-  border:"#142018", border2:"#1e3024",
-  green:"#3dd68c", greenMid:"#2aab6e", greenDim:"#165c38", greenDeep:"#0a3320",
-  text:"#c8e8d0", muted:"#5a8a68", dim:"#1e3828",
-  great:"#3dd68c", good:"#a8e060", fair:"#f0c040", skip:"#e05858",
-};
-const LIGHT = {
-  bg:"#f4efe6", surface:"#ece6da", surface2:"#e2dbd0",
-  border:"#d0c8bc", border2:"#beb5a8",
-  green:"#1a7a4a", greenMid:"#156038", greenDim:"#0d4228", greenDeep:"#dff0e8",
-  text:"#1a2820", muted:"#4a6850", dim:"#9aaa98",
-  great:"#1a7a4a", good:"#5a8010", fair:"#b06808", skip:"#c03030",
-};
-// ─── Accent color palettes ────────────────────────────────────────────────────
-const ACCENTS = {
-  forest: { name:"Forest", dot:"#3dd68c", dark:{green:"#3dd68c",greenMid:"#2aab6e",greenDim:"#165c38",greenDeep:"#0a3320"}, light:{green:"#1a7a4a",greenMid:"#156038",greenDim:"#0d4228",greenDeep:"#dff0e8"} },
-  ember:  { name:"Ember",  dot:"#f05c5c", dark:{green:"#f05c5c",greenMid:"#c43e3e",greenDim:"#6b1a1a",greenDeep:"#2a0a0a"}, light:{green:"#b02020",greenMid:"#8a1818",greenDim:"#5a0e0e",greenDeep:"#fce8e8"} },
-  ocean:  { name:"Ocean",  dot:"#4da8f0", dark:{green:"#4da8f0",greenMid:"#2a82cc",greenDim:"#0e3a6b",greenDeep:"#05182e"}, light:{green:"#1055a0",greenMid:"#0d4285",greenDim:"#082860",greenDeep:"#e0eef8"} },
-  blaze:  { name:"Blaze",  dot:"#f0924d", dark:{green:"#f0924d",greenMid:"#cc6a2a",greenDim:"#6b2e0e",greenDeep:"#2a1005"}, light:{green:"#b04010",greenMid:"#8a300c",greenDim:"#5a1e08",greenDeep:"#fceee0"} },
-  storm:  { name:"Storm",  dot:"#a56cf0", dark:{green:"#a56cf0",greenMid:"#7a42cc",greenDim:"#3a1a6b",greenDeep:"#180a2a"}, light:{green:"#6020b0",greenMid:"#4c1888",greenDim:"#320e5a",greenDeep:"#ede0fc"} },
-};
-function applyAccent(theme,accentKey,isDark){
-  const acc=ACCENTS[accentKey]||ACCENTS.forest;
-  const tokens=isDark?acc.dark:acc.light;
-  return{...theme,...tokens,great:tokens.green,good:tokens.green+"cc"};
-}
-const ThemeCtx = createContext(DARK);
-const useT = () => useContext(ThemeCtx);
+import { useState, useEffect, useCallback } from "react";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 const W = { precipitation:0.28, wind:0.20, temperature:0.18, humidity:0.08, uv:0.06, aqi:0.15, pollen:0.05 };
 const DEFAULT_LOC = { lat:40.794, lon:-73.9916, name:"Upper West Side, NYC" };
-const DEFAULT_SETTINGS = { distance:5.0, pace:540, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV", daylightOnly:false, tempUnit:"F", theme:"auto", accentColor:"forest" };
+const DEFAULT_SETTINGS = { distance:5, pace:9, apiKey:"ENu4XXZ57XWQUSkwSQ1iYw7waGmDXhWV", daylightOnly:false, tempUnit:"F" };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-const sc  = (s,T) => s>=80?T.great:s>=65?T.good:s>=45?T.fair:T.skip;
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:"#050c08", surface:"#08120a", surface2:"#0d1a10",
+  border:"#142018", border2:"#1e3024",
+  green:"#3dd68c", greenMid:"#2aab6e", greenDim:"#165c38", greenDeep:"#0a3320",
+  text:"#c8e8d0", muted:"#4a7a58", dim:"#1e3828",
+  great:"#3dd68c", good:"#a8e060", fair:"#f0c040", skip:"#e05858",
+};
+const sc  = s => s>=80?C.great:s>=65?C.good:s>=45?C.fair:C.skip;
 const sl  = s => s>=80?"PERFECT":s>=65?"GOOD":s>=45?"FAIR":"SKIP IT";
 const mono  = { fontFamily:"'JetBrains Mono',monospace" };
 const serif  = { fontFamily:"'Cormorant Garamond',serif" };
 const cond  = { fontFamily:"'Barlow Condensed',sans-serif" };
-const aqiLabel = v => v<=50?{l:"Good",k:"great"}:v<=100?{l:"Moderate",k:"good"}:v<=150?{l:"Sensitive",k:"fair"}:{l:"Unhealthy",k:"skip"};
-const polLabel = v => v<=0?{l:"None",k:"great"}:v<=30?{l:"Low",k:"good"}:v<=100?{l:"Medium",k:"fair"}:{l:"High",k:"skip"};
-const aqC = (v,T) => T[aqiLabel(v).k];
-const polC = (v,T) => T[polLabel(v).k];
+const bgStyle = { background:C.bg, fontFamily:"'DM Sans',sans-serif", color:C.text };
+const aqiLabel  = v => v<=50?{l:"Good",c:C.great}:v<=100?{l:"Moderate",c:C.good}:v<=150?{l:"Sensitive",c:C.fair}:{l:"Unhealthy",c:C.skip};
+const polLabel  = v => v<=0?{l:"None",c:C.great}:v<=30?{l:"Low",c:C.good}:v<=100?{l:"Medium",c:C.fair}:{l:"High",c:C.skip};
 const fmt12 = h => h===0||h===24?"12am":h<12?`${h}am`:h===12?"12pm":`${h-12}pm`;
 const compassLabel = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 const windChill = (t,w) => t>50||w<3?t:Math.round(35.74+0.6215*t-35.75*Math.pow(w,0.16)+0.4275*t*Math.pow(w,0.16));
 const toC = f => Math.round((f-32)*5/9);
-const displayTemp = (f,unit) => unit==="C"?`${toC(f)}°C`:`${f}°F`;
+const displayTemp = (f, unit) => unit==="C"?`${toC(f)}°C`:`${f}°F`;
 const dd = ms => ({ transitionDelay:`${ms}ms` });
-const paceToStr = secs => `${Math.floor(secs/60)}:${String(secs%60).padStart(2,"0")} /mi`;
-const paceFromStr = s => { const p=s.replace(" /mi","").split(":"); return parseInt(p[0])*60+parseInt(p[1]); };
-
-// ─── Dist / Pace lists ─────────────────────────────────────────────────────────
-const DIST_ITEMS = Array.from({length:104},(_,i) => `${((i+1)*0.25).toFixed(2).replace(/\.00$/,"").replace(/\.50$/,".5").replace(/\.25$/,".25").replace(/\.75$/,".75")} mi`);
-const PACE_ITEMS = Array.from({length:61},(_,i) => { const s=300+i*10; return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")} /mi`; });
 
 // ─── Seasonal fallback ─────────────────────────────────────────────────────────
 const SEA = {
@@ -74,16 +43,16 @@ const SEA = {
   10:{base:51,sw:8,rain:.35,wind:12,hum:62,uv:3,prev:295,aqi:38,pol:5},
   11:{base:41,sw:7,rain:.35,wind:13,hum:63,uv:2,prev:315,aqi:35,pol:0},
 };
-function seededRand(seed){let s=seed;return()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};}
-function makeFallbackDay(date){
-  const m=SEA[date.getMonth()],rand=seededRand(date.getFullYear()*10000+date.getMonth()*100+date.getDate());
-  const isR=rand()<m.rain,ri=isR?0.4+rand()*0.6:0,wm=0.7+rand()*0.6,to=(rand()-0.5)*m.sw*2;
-  const wd=Math.round((m.prev+(rand()-0.5)*90+360)%360),aqO=(rand()-0.5)*20;
+function seededRand(seed) { let s=seed; return ()=>{ s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; }; }
+function makeFallbackDay(date) {
+  const m=SEA[date.getMonth()], rand=seededRand(date.getFullYear()*10000+date.getMonth()*100+date.getDate());
+  const isR=rand()<m.rain, ri=isR?0.4+rand()*0.6:0, wm=0.7+rand()*0.6, to=(rand()-0.5)*m.sw*2;
+  const wd=Math.round((m.prev+(rand()-0.5)*90+360)%360), aqO=(rand()-0.5)*20;
   const mo=date.getMonth();
   const sunrises=[7.2,6.8,6.1,5.3,4.7,4.4,4.6,5.2,5.9,6.6,7.2,7.5];
   const sunsets=[16.7,17.3,18.0,18.7,19.4,19.9,19.8,19.2,18.3,17.4,16.7,16.4];
   const hours=Array.from({length:17},(_,i)=>{
-    const hr=i+5,tc=-Math.cos(((hr-6)/9)*Math.PI)*m.sw,temp=Math.round(m.base+to+tc);
+    const hr=i+5, tc=-Math.cos(((hr-6)/9)*Math.PI)*m.sw, temp=Math.round(m.base+to+tc);
     const rc=isR?30+ri*50*Math.sin(((hr-8)/13)*Math.PI):5+rand()*8;
     const wind=Math.round(Math.max(3,m.wind*wm*(0.7+0.3*Math.sin(((hr-8)/13)*Math.PI))));
     const hum=Math.round(Math.max(30,Math.min(95,m.hum+(isR?12:0)-(temp-m.base)*0.4)));
@@ -91,64 +60,59 @@ function makeFallbackDay(date){
     const uv=isR?0:parseFloat((m.uv*uc).toFixed(1));
     const aqi=Math.max(0,Math.round(m.aqi+aqO+(hr>=12&&hr<=17?10:0)));
     const pc=hr>=8&&hr<=16?Math.sin(((hr-8)/8)*Math.PI):0;
-    return{hr,t:temp,p:Math.round(Math.max(0,Math.min(95,rc))),w:wind,wd,h:hum,u:uv,aqi,pollen:Math.round(m.pol*pc)};
+    return {hr,t:temp,p:Math.round(Math.max(0,Math.min(95,rc))),w:wind,wd,h:hum,u:uv,aqi,pollen:Math.round(m.pol*pc)};
   });
   const fmtL=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-  return{label:fmtL(date),hours,windDeg:wd,sunTimes:{sunrise:sunrises[mo],sunset:sunsets[mo]}};
+  return {label:fmtL(date),hours,windDeg:wd,sunTimes:{sunrise:sunrises[mo],sunset:sunsets[mo]}};
 }
 
-// ─── Live weather ──────────────────────────────────────────────────────────────
-async function fetchLiveWeather(lat,lon,apiKey){
-  if(!apiKey)throw new Error("No API key");
-  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone,tzEnc=encodeURIComponent(tz);
+// ─── Live weather fetch ────────────────────────────────────────────────────────
+async function fetchLiveWeather(lat, lon, apiKey) {
+  if (!apiKey) throw new Error("No API key");
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone, tzEnc=encodeURIComponent(tz);
   const tUrl=`https://api.tomorrow.io/v4/weather/forecast?location=${lat},${lon}&timesteps=1h&units=imperial&apikey=${apiKey}`;
   const aUrl=`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=us_aqi,grass_pollen,birch_pollen,ragweed_pollen&timezone=${tzEnc}&forecast_days=2`;
   const sUrl=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=${tzEnc}&forecast_days=2`;
   const [tRes,aRes,sRes]=await Promise.all([fetch(tUrl),fetch(aUrl).catch(()=>null),fetch(sUrl).catch(()=>null)]);
-  if(!tRes.ok){const err=await tRes.json().catch(()=>({}));throw new Error(err?.message||`Tomorrow.io ${tRes.status}`);}
-  const tData=await tRes.json(),aData=aRes?.ok?await aRes.json():null,sData=sRes?.ok?await sRes.json():null;
+  if (!tRes.ok) { const err=await tRes.json().catch(()=>({})); throw new Error(err?.message||`Tomorrow.io ${tRes.status}`); }
+  const tData=await tRes.json(), aData=aRes?.ok?await aRes.json():null, sData=sRes?.ok?await sRes.json():null;
   const hourlyArr=tData?.timelines?.hourly;
-  if(!Array.isArray(hourlyArr))throw new Error("Unexpected shape");
+  if (!Array.isArray(hourlyArr)) throw new Error("Unexpected shape");
   const aqMap={};
-  aData?.hourly?.time?.forEach((t,i)=>{aqMap[t.slice(0,13)]={aqi:aData.hourly.us_aqi?.[i]??40,pollen:(aData.hourly.grass_pollen?.[i]??0)+(aData.hourly.birch_pollen?.[i]??0)+(aData.hourly.ragweed_pollen?.[i]??0)};});
-  const parseSun=str=>{if(!str)return null;const d=new Date(str);return d.getHours()+d.getMinutes()/60;};
-  const now=new Date(),tom=new Date(now);tom.setDate(now.getDate()+1);
-  const toDS=d=>d.toLocaleDateString("en-CA"),todayStr=toDS(now),tomStr=toDS(tom);
-  const getSun=ds=>{const i=sData?.daily?.time?.indexOf(ds)??-1;if(i<0)return{sunrise:6.5,sunset:19.5};return{sunrise:parseSun(sData.daily.sunrise[i])??6.5,sunset:parseSun(sData.daily.sunset[i])??19.5};};
-  const buildDay=ds=>{const hrs=[];for(const entry of hourlyArr){const t=entry.time;if(!t.startsWith(ds))continue;const hr=parseInt(t.slice(11,13)),v=entry.values,key=t.slice(0,13),aq=aqMap[key]||{aqi:40,pollen:0};hrs.push({hr,t:Math.round(v.temperature??60),p:Math.round(v.precipitationProbability??10),w:Math.round(v.windSpeed??8),wd:Math.round(v.windDirection??270),h:Math.round(v.humidity??60),u:parseFloat((v.uvIndex??0).toFixed(1)),aqi:Math.round(aq.aqi),pollen:Math.round(aq.pollen)});}const mid=hrs.filter(h=>h.hr>=10&&h.hr<=14);return{hrs,windDeg:mid.length?Math.round(mid.reduce((s,h)=>s+h.wd,0)/mid.length):270};};
+  aData?.hourly?.time?.forEach((t,i)=>{ aqMap[t.slice(0,13)]={aqi:aData.hourly.us_aqi?.[i]??40,pollen:(aData.hourly.grass_pollen?.[i]??0)+(aData.hourly.birch_pollen?.[i]??0)+(aData.hourly.ragweed_pollen?.[i]??0)}; });
+  const parseSun=str=>{ if(!str)return null; const d=new Date(str); return d.getHours()+d.getMinutes()/60; };
+  const now=new Date(), tom=new Date(now); tom.setDate(now.getDate()+1);
+  const toDS=d=>d.toLocaleDateString("en-CA"), todayStr=toDS(now), tomStr=toDS(tom);
+  const getSun=ds=>{ const i=sData?.daily?.time?.indexOf(ds)??-1; if(i<0)return{sunrise:6.5,sunset:19.5}; return{sunrise:parseSun(sData.daily.sunrise[i])??6.5,sunset:parseSun(sData.daily.sunset[i])??19.5}; };
+  const buildDay=ds=>{ const hrs=[]; for(const entry of hourlyArr){ const t=entry.time; if(!t.startsWith(ds))continue; const hr=parseInt(t.slice(11,13)),v=entry.values,key=t.slice(0,13),aq=aqMap[key]||{aqi:40,pollen:0}; hrs.push({hr,t:Math.round(v.temperature??60),p:Math.round(v.precipitationProbability??10),w:Math.round(v.windSpeed??8),wd:Math.round(v.windDirection??270),h:Math.round(v.humidity??60),u:parseFloat((v.uvIndex??0).toFixed(1)),aqi:Math.round(aq.aqi),pollen:Math.round(aq.pollen)}); } const mid=hrs.filter(h=>h.hr>=10&&h.hr<=14); return{hrs,windDeg:mid.length?Math.round(mid.reduce((s,h)=>s+h.wd,0)/mid.length):270}; };
   const fmtL=d=>d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const td=buildDay(todayStr),tm=buildDay(tomStr);
   return{isLive:true,fetchedAt:Date.now(),today:{label:fmtL(now),hours:td.hrs,windDeg:td.windDeg,sunTimes:getSun(todayStr)},tomorrow:{label:fmtL(tom),hours:tm.hrs,windDeg:tm.windDeg,sunTimes:getSun(tomStr)}};
 }
-async function getLocationName(lat,lon){
-  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=15`,{headers:{"Accept-Language":"en"}});const d=await r.json(),a=d.address;return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}°N`;}
-  catch{return `${lat.toFixed(2)}°N`;}
+
+async function getLocationName(lat, lon) {
+  try {
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=15`,{headers:{"Accept-Language":"en"}});
+    const d=await r.json(),a=d.address;
+    return a.neighbourhood||a.suburb||a.city_district||a.quarter||a.city||a.town||`${lat.toFixed(2)}°N`;
+  } catch { return `${lat.toFixed(2)}°N`; }
 }
 
 // ─── Scoring ───────────────────────────────────────────────────────────────────
 const sAQI=v=>v<=50?100:v<=100?Math.round(100-(v-50)*0.5):v<=150?Math.round(75-(v-100)*0.7):v<=200?Math.round(40-(v-150)*0.6):0;
 const sPollen=v=>v<=0?100:v<=30?Math.round(100-v*0.5):v<=100?Math.round(85-(v-30)*0.35):v<=200?Math.round(60-(v-100)*0.3):Math.max(0,Math.round(30-(v-200)*0.15));
-function scoreHour(h){
+function scoreHour(h) {
   const p=Math.max(0,100-(h.p??0)*0.8),ww=Math.max(0,100-(h.w??0)*4),t=Math.max(0,100-Math.abs((h.t??62)-62.5)*3.5),hm=Math.max(0,100-(h.h??0)*0.9),u=Math.max(0,100-(h.u??0)*9),aq=sAQI(h.aqi??40),po=sPollen(h.pollen??0);
   return{total:Math.round(p*W.precipitation+ww*W.wind+t*W.temperature+hm*W.humidity+u*W.uv+aq*W.aqi+po*W.pollen),bd:{precipitation:Math.round(p),wind:Math.round(ww),temperature:Math.round(t),humidity:Math.round(hm),uv:Math.round(u),aqi:Math.round(aq),pollen:Math.round(po)}};
 }
-function fmt15(decHr){
-  const h=Math.floor(decHr),m=Math.round((decHr-h)*60);
-  if(m===0)return fmt12(h);
-  const base=h===0||h===24?"12":h<=12?String(h):String(h-12);
-  const suf=h<12||h===24?"am":"pm";
-  return`${base}:${String(m).padStart(2,"0")}${suf}`;
-}
-function processHours(arr,sunTimes,daylightOnly,currentHour){
+function processHours(arr, sunTimes, daylightOnly, currentHour) {
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
   for(let i=0;i<hours.length-1;i++){
     const hr=hours[i].hr;
     if(currentHour!=null&&hr<currentHour)continue;
     if(hr<5||hr+2>23)continue;
-    if(daylightOnly&&sunTimes){
-      if(hr<sunTimes.sunrise||hr+2>sunTimes.sunset)continue;
-    }
+    if(daylightOnly&&sunTimes){const isNight=hr<sunTimes.sunrise||hr>=sunTimes.sunset||hours[i+1].hr>=sunTimes.sunset;if(isNight)continue;}
     const avg=Math.round((hours[i].score+hours[i+1].score)/2);
     if(!best||avg>best.avgScore)best={startIdx:i,avgScore:avg};
   }
@@ -156,15 +120,16 @@ function processHours(arr,sunTimes,daylightOnly,currentHour){
   return{hours,best};
 }
 
-// ─── Direction ─────────────────────────────────────────────────────────────────
-function getDirRec(wd,ws){
-  if(ws<6)return{headline:"Wind is calm",detail:"Conditions are calm — start in whatever direction suits your route."};
-  const label=compassLabel(wd),returnLabel=compassLabel((wd+180)%360);
-  return{headline:`Head ${label} first`,detail:`Run into the ${label} headwind while your legs are fresh — you'll earn that tailwind boost on the way back ${returnLabel}.`};
+// ─── Direction logic (generalized N/S/E/W) ────────────────────────────────────
+function getDirRec(wd, ws) {
+  if(ws<6)return{startDir:"Any",headline:"Wind is calm",sub:"No preference today",detail:"Conditions are calm — start in whatever direction suits your route."};
+  // Wind comes FROM wd — run INTO it first (toward wd)
+  const label=compassLabel(wd);
+  const returnLabel=compassLabel((wd+180)%360);
+  return{startDir:label,headline:`Head ${label} first`,sub:`${label} wind · ${ws} mph`,detail:`Run into the ${label} headwind while your legs are fresh — you'll earn that tailwind boost on the way back ${returnLabel}.`};
 }
 
-// ─── Outfit ────────────────────────────────────────────────────────────────────
-function getOutfit(h){
+function getOutfit(h) {
   const feel=windChill(h.t,h.w),rainy=h.p>40,misty=h.p>20&&h.p<=40,uvHigh=h.u>6,windy=h.w>15;
   const L=[];
   if(feel<=25)L.push({slot:"Top",icon:"🧥",item:"Heavy insulated jacket",note:"windproof shell essential"});
@@ -193,9 +158,9 @@ function getOutfit(h){
   return{layers:L,feel,feelPhrase:fp,rainy,uvHigh};
 }
 
-function getWhyExplainer(bh,best){
+function getWhyExplainer(bh, best) {
   const reasons=[];
-  if(bh.p<=10)reasons.push("no precipitation in the forecast");
+  if(bh.p<=10)reasons.push("no rain in the forecast");
   else if(bh.p<=25)reasons.push(`only ${bh.p}% chance of rain`);
   if(bh.w<=7)reasons.push("wind is barely noticeable");
   else if(bh.w<=12)reasons.push(`light ${bh.w} mph breeze`);
@@ -221,50 +186,43 @@ const BAD_DAY_MSGS=[
   {emoji:"🍕",title:"Rest day protocol activated.",sub:"Treat yourself. The miles will be there tomorrow."},
 ];
 
-// ─── Feedback tracking ────────────────────────────────────────────────────────
-// Replace AIRTABLE_TOKEN and AIRTABLE_BASE_ID with your actual values
-// Get them from airtable.com → your base → Help → API docs
-const AIRTABLE_TOKEN = "YOUR_AIRTABLE_TOKEN_HERE";
-const AIRTABLE_BASE_ID = "YOUR_AIRTABLE_BASE_ID_HERE";
-async function submitFeedback(vote, bh, best, location, view) {
-  if(!AIRTABLE_TOKEN || AIRTABLE_TOKEN.startsWith("YOUR_")) return; // skip if not configured
-  try {
-    const now = new Date();
-    await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Feedback`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ fields: {
-        Vote: vote === "up" ? "👍 Helpful" : "👎 Not helpful",
-        Date: now.toISOString().slice(0,10),
-        Time: now.toTimeString().slice(0,5),
-        Day: view,
-        Location: location || "Unknown",
-        Score: best?.avgScore || 0,
-        Temp_F: bh?.t || 0,
-        Precip_Pct: bh?.p || 0,
-        Wind_MPH: bh?.w || 0,
-        AQI: bh?.aqi || 0,
-        Pollen: bh?.pollen || 0,
-        Humidity_Pct: bh?.h || 0,
-        UV: bh?.u || 0,
-        Window_Start: best?.decHr ? `${Math.floor(best.decHr)}:${String(Math.round((best.decHr%1)*60)).padStart(2,"0")}` : "",
+
+// ─── Feedback tracking ─────────────────────────────────────────────────────
+const AIRTABLE_TOKEN="YOUR_AIRTABLE_TOKEN_HERE";
+const AIRTABLE_BASE_ID="YOUR_AIRTABLE_BASE_ID_HERE";
+async function submitFeedback(vote,bh,best,location,view){
+  if(!AIRTABLE_TOKEN||AIRTABLE_TOKEN.startsWith("YOUR_"))return;
+  try{
+    const now=new Date();
+    await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Feedback`,{
+      method:"POST",
+      headers:{"Authorization":`Bearer ${AIRTABLE_TOKEN}`,"Content-Type":"application/json"},
+      body:JSON.stringify({fields:{
+        Vote:vote==="up"?"👍 Helpful":"👎 Not helpful",
+        Date:now.toISOString().slice(0,10),
+        Time:now.toTimeString().slice(0,5),
+        Day:view,Location:location||"Unknown",
+        Score:best?.avgScore||0,Temp_F:bh?.t||0,Precip_Pct:bh?.p||0,
+        Wind_MPH:bh?.w||0,AQI:bh?.aqi||0,Pollen:bh?.pollen||0,
+        Humidity_Pct:bh?.h||0,UV:bh?.u||0,
+        Window_Start:bh?`${bh.hr}:00`:"",
       }})
     });
-  } catch(e) { /* silent fail — feedback tracking is non-critical */ }
+  }catch{}
 }
-
-async function doShare(bh,best,winStart,dateLabel,locationName,tempUnit){
-  const win=`${fmt12(winStart)} – ${fmt12(winStart+2)}`;
+async function doShare(bh, best, dateLabel, locationName, tempUnit) {
+  const win=`${fmt12(bh.hr)} – ${fmt12(bh.hr+2)}`;
   const tempStr=tempUnit==="C"?`${toC(bh.t)}°C`:`${bh.t}°F`;
   const dow=dateLabel.split(",")[0];
   const text=`🏃 ${locationName} · ${dow}\n⏰ ${win} · ${best.avgScore}/100 ${sl(best.avgScore)}\n${tempStr} · ${bh.p}% precip · ${bh.w}mph wind`;
-  try{if(navigator.share){await navigator.share({title:"My Run Forecast",text,url:"https://temprunture.com"});return"shared";}await navigator.clipboard.writeText(text);return"copied";}
-  catch(e){if(e.name!=="AbortError"){try{await navigator.clipboard.writeText(text);return"copied";}catch{}}return null;}
+  try {
+    if(navigator.share){await navigator.share({title:"My Run Forecast",text,url:"https://temprunture.com"});return"shared";}
+    await navigator.clipboard.writeText(text);return"copied";
+  } catch(e){if(e.name!=="AbortError"){try{await navigator.clipboard.writeText(text);return"copied";}catch{}}return null;}
 }
 
 // ─── Visual Components ─────────────────────────────────────────────────────────
 function ScoreArc({score,color,animate}){
-  const T=useT();
   const R=88,CX=100,CY=100,sa=-220,ta=260;
   const rad=deg=>deg*Math.PI/180,pt=deg=>({x:CX+R*Math.cos(rad(deg)),y:CY+R*Math.sin(rad(deg))});
   const arc=(f,t)=>{const s=pt(f),e=pt(t);return`M ${s.x} ${s.y} A ${R} ${R} 0 ${Math.abs(t-f)>180?1:0} 1 ${e.x} ${e.y}`;};
@@ -272,10 +230,10 @@ function ScoreArc({score,color,animate}){
   return(
     <svg width="200" height="200" style={{overflow:"visible"}}>
       <defs><filter id="ga"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      <path d={arc(sa,sa+ta)} fill="none" stroke={T.border2} strokeWidth="5" strokeLinecap="round"/>
-      <path d={arc(sa,sa+ta)} fill="none" stroke={T.greenDeep} strokeWidth="12" strokeLinecap="round" opacity="0.7"/>
+      <path d={arc(sa,sa+ta)} fill="none" stroke={C.border2} strokeWidth="5" strokeLinecap="round"/>
+      <path d={arc(sa,sa+ta)} fill="none" stroke={C.greenDeep} strokeWidth="12" strokeLinecap="round" opacity="0.5"/>
       <path d={arc(sa,sa+ta)} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${filled} ${circ}`} filter="url(#ga)" style={{transition:animate?"stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1)":"none"}}/>
-      {[0,25,50,75,100].map(p=>{const a=sa+ta*p/100,ii={x:CX+(R-8)*Math.cos(rad(a)),y:CY+(R-8)*Math.sin(rad(a))},oi={x:CX+(R+4)*Math.cos(rad(a)),y:CY+(R+4)*Math.sin(rad(a))};return<line key={p} x1={ii.x} y1={ii.y} x2={oi.x} y2={oi.y} stroke={T.border2} strokeWidth="1.5"/>;}) }
+      {[0,25,50,75,100].map(p=>{const a=sa+ta*p/100,ii={x:CX+(R-8)*Math.cos(rad(a)),y:CY+(R-8)*Math.sin(rad(a))},oi={x:CX+(R+4)*Math.cos(rad(a)),y:CY+(R+4)*Math.sin(rad(a))};return<line key={p} x1={ii.x} y1={ii.y} x2={oi.x} y2={oi.y} stroke={C.border2} strokeWidth="1.5"/>;}) }
     </svg>
   );
 }
@@ -287,321 +245,143 @@ function AnimNum({value,dur=1200}){
 }
 
 function WindRose({windDeg,color}){
-  const T=useT();
   const rad=d=>d*Math.PI/180,going=(windDeg+180)%360,aa=rad(going-90),cx=40,cy=40,r=26;
   const tx=cx+r*Math.cos(aa),ty=cy+r*Math.sin(aa),bx=cx-(r*0.6)*Math.cos(aa),by=cy-(r*0.6)*Math.sin(aa),px=Math.cos(aa+Math.PI/2)*6,py=Math.sin(aa+Math.PI/2)*6;
-  // Label positions: N=top, E=right, S=bottom, W=left — fixed coords, no clipping
   const labels=[["N",cx,cy-(r+13)],["E",cx+(r+13),cy],["S",cx,cy+(r+13)],["W",cx-(r+13),cy]];
   return(
     <svg width="80" height="80" style={{overflow:"visible"}}>
       <defs><filter id="wg"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      <circle cx={cx} cy={cy} r={r+4} fill="none" stroke={T.border2} strokeWidth="1"/>
-      {[0,90,180,270].map(deg=>{const a=rad(deg-90);return<line key={deg} x1={cx+(r-2)*Math.cos(a)} y1={cy+(r-2)*Math.sin(a)} x2={cx+(r+4)*Math.cos(a)} y2={cy+(r+4)*Math.sin(a)} stroke={T.border2} strokeWidth="1.5"/>;}) }
-      {labels.map(([l,lx,ly])=>(
-        <text key={l} x={lx} y={ly} fill={T.muted} fontSize="9" fontFamily="JetBrains Mono,monospace" textAnchor="middle" dominantBaseline="middle" fontWeight="500">{l}</text>
-      ))}
+      <circle cx={cx} cy={cy} r={r+4} fill="none" stroke={C.border2} strokeWidth="1"/>
+      {[0,90,180,270].map(deg=>{const a=rad(deg-90);return<line key={deg} x1={cx+(r-2)*Math.cos(a)} y1={cy+(r-2)*Math.sin(a)} x2={cx+(r+4)*Math.cos(a)} y2={cy+(r+4)*Math.sin(a)} stroke={C.border2} strokeWidth="1.5"/>;}) }
+      {labels.map(([l,lx,ly])=><text key={l} x={lx} y={ly} fill={C.muted} fontSize="9" fontFamily="JetBrains Mono,monospace" textAnchor="middle" dominantBaseline="middle" fontWeight="500">{l}</text>)}
       <polygon points={`${tx},${ty} ${bx+px},${by+py} ${bx-px},${by-py}`} fill={color} filter="url(#wg)"/>
-      <circle cx={cx} cy={cy} r="3" fill={T.surface2} stroke={color} strokeWidth="1.5"/>
+      <circle cx={cx} cy={cy} r="3" fill={C.surface2} stroke={color} strokeWidth="1.5"/>
     </svg>
   );
 }
 
 function WeatherBg({hours}){
-  const T=useT();
   const day=hours.filter(h=>h.hr>=8&&h.hr<=18);
   const avgRain=day.reduce((s,h)=>s+h.p,0)/Math.max(1,day.length);
   const avgWind=day.reduce((s,h)=>s+h.w,0)/Math.max(1,day.length);
-  if(avgRain>45)return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>{Array.from({length:18}).map((_,i)=><div key={i} style={{position:"absolute",top:"-5%",left:`${(i*5.8)%100}%`,width:1.5,height:`${12+i%3*8}px`,background:`${T.green}20`,borderRadius:1,animation:`rain ${1.4+i*0.12}s linear infinite`,animationDelay:`${i*0.18}s`}}/>)}</div>;
-  if(avgWind>18)return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>{Array.from({length:7}).map((_,i)=><div key={i} style={{position:"absolute",top:`${8+i*13}%`,left:"-5%",width:`${60+i*25}px`,height:1,background:`${T.green}18`,animation:`windStreak ${2.5+i*0.5}s ease-in-out infinite`,animationDelay:`${i*0.6}s`}}/>)}</div>;
-  return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0}}><div style={{position:"absolute",top:"-25%",left:"-15%",width:"65vw",height:"65vw",borderRadius:"50%",background:`radial-gradient(circle,${T.green}14 0%,transparent 65%)`,animation:"breathe 14s ease-in-out infinite"}}/><div style={{position:"absolute",bottom:"-20%",right:"-10%",width:"55vw",height:"55vw",borderRadius:"50%",background:`radial-gradient(circle,${T.greenMid}10 0%,transparent 65%)`,animation:"breathe2 20s ease-in-out infinite"}}/></div>;
+  if(avgRain>45)return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>{Array.from({length:18}).map((_,i)=><div key={i} style={{position:"absolute",top:"-5%",left:`${(i*5.8)%100}%`,width:1.5,height:`${12+i%3*8}px`,background:`${C.green}18`,borderRadius:1,animation:`rain ${1.4+i*0.12}s linear infinite`,animationDelay:`${i*0.18}s`}}/>)}</div>;
+  if(avgWind>18)return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>{Array.from({length:7}).map((_,i)=><div key={i} style={{position:"absolute",top:`${8+i*13}%`,left:"-5%",width:`${60+i*25}px`,height:1,background:`${C.green}14`,animation:`windStreak ${2.5+i*0.5}s ease-in-out infinite`,animationDelay:`${i*0.6}s`}}/>)}</div>;
+  return<div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0}}><div style={{position:"absolute",top:"-25%",left:"-15%",width:"65vw",height:"65vw",borderRadius:"50%",background:`radial-gradient(circle,${C.green}12 0%,transparent 65%)`,animation:"breathe 14s ease-in-out infinite"}}/><div style={{position:"absolute",bottom:"-20%",right:"-10%",width:"55vw",height:"55vw",borderRadius:"50%",background:`radial-gradient(circle,${C.greenMid}0e 0%,transparent 65%)`,animation:"breathe2 20s ease-in-out infinite"}}/><div style={{position:"absolute",inset:0,opacity:0.03,backgroundImage:`linear-gradient(${C.green} 1px,transparent 1px),linear-gradient(90deg,${C.green} 1px,transparent 1px)`,backgroundSize:"40px 40px"}}/></div>;
 }
 
 function Dots(){
-  const T=useT();
   const [v,setV]=useState(".");
   useEffect(()=>{const t=setInterval(()=>setV(p=>p.length>=3?".":p+"."),500);return()=>clearInterval(t);},[]);
-  return <span style={{...mono,color:T.greenMid,fontSize:22}}>{v}</span>;
+  return <span style={{...mono,color:C.greenDeep,fontSize:22}}>{v}</span>;
 }
 
 function PWABanner({onDismiss}){
-  const T=useT();
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isAndroid=/android/i.test(navigator.userAgent);
-  const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone;
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
   if(isStandalone||(!isIOS&&!isAndroid))return null;
   const msg=isIOS?"Tap Share then 'Add to Home Screen'":"Tap Menu then 'Add to Home Screen'";
   return(
-    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,padding:"12px 16px",background:T.surface,borderTop:`1px solid ${T.border2}`,display:"flex",alignItems:"center",gap:12,boxShadow:"0 -4px 24px rgba(0,0,0,0.2)"}}>
+    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:200,padding:"12px 16px",background:C.surface,borderTop:`1px solid ${C.border2}`,display:"flex",alignItems:"center",gap:12,boxShadow:"0 -4px 24px rgba(0,0,0,0.4)"}}>
       <div style={{fontSize:22,flexShrink:0}}>📲</div>
-      <div style={{flex:1}}><div style={{...mono,fontSize:11,color:T.text}}>Add to your home screen</div><div style={{...mono,fontSize:9,color:T.muted,marginTop:2}}>{msg}</div></div>
-      <button onClick={onDismiss} style={{...mono,fontSize:10,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"7px 14px",cursor:"pointer"}}>Dismiss</button>
+      <div style={{flex:1}}><div style={{...mono,fontSize:10,color:C.text,letterSpacing:0.5}}>Add to your home screen</div><div style={{...mono,fontSize:8,color:C.muted,marginTop:2}}>{msg} for daily forecasts</div></div>
+      <button onClick={onDismiss} style={{...mono,fontSize:9,color:C.muted,background:"none",border:`1px solid ${C.border2}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",flexShrink:0,letterSpacing:1}}>Dismiss</button>
     </div>
   );
 }
 
 function LocationScreen({onGrant,onSkip}){
-  const T=useT();
   const [asking,setAsking]=useState(false);
-  const [denied,setDenied]=useState(false);
   const hasGeo=!!navigator.geolocation;
   const handleGrant=()=>{
-    setAsking(true);setDenied(false);
-    navigator.geolocation.getCurrentPosition(
-      pos=>onGrant(pos.coords.latitude,pos.coords.longitude),
-      (err)=>{
-        setAsking(false);
-        if(err.code===1)setDenied(true); // permission denied
-        else onSkip();
-      },
-      {timeout:12000,enableHighAccuracy:false}
-    );
+    setAsking(true);
+    navigator.geolocation.getCurrentPosition(pos=>onGrant(pos.coords.latitude,pos.coords.longitude),()=>{setAsking(false);onSkip();},{timeout:12000,enableHighAccuracy:false});
   };
-  const features=[
-    {icon:"⏰",label:"Best window",desc:"Scores every hour 5am–9pm so you know exactly when to lace up"},
-    {icon:"🌡",label:"7-factor scoring",desc:"Rain, wind, temp, AQI, pollen, humidity & UV — weighted by impact"},
-    {icon:"👕",label:"Outfit picker",desc:"Tells you exactly what to wear based on feels-like temperature"},
-    {icon:"🧭",label:"Start direction",desc:"Which way to run first based on wind so you earn the tailwind home"},
-    {icon:"💚",label:"Air quality",desc:"AQI & pollen counts factored into your score — big for allergy season"},
-  ];
   return(
-    <div style={{background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text,minHeight:"100vh",overflowY:"auto"}}>
-      {/* Hero */}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"56px 24px 40px",textAlign:"center",maxWidth:480,margin:"0 auto"}}>
-        <div style={{display:"flex",alignItems:"baseline",marginBottom:10}}>
-          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-          <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
-          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
-        </div>
-        <div style={{...cond,fontSize:22,fontWeight:600,color:T.text,letterSpacing:1,marginBottom:12,lineHeight:1.3}}>Know exactly when to run.<br/>Before you even check the weather.</div>
-        <div style={{...mono,fontSize:10,color:T.muted,lineHeight:1.9,maxWidth:320,marginBottom:36}}>
-          tempRUNture scores every hour of the day based on 7 live weather factors and tells you your perfect run window — with what to wear, which direction to start, and why.
-        </div>
-        {denied&&(
-          <div style={{background:`${T.skip}15`,border:`1px solid ${T.skip}40`,borderRadius:10,padding:"12px 16px",marginBottom:16,maxWidth:320,width:"100%"}}>
-            <div style={{...mono,fontSize:10,color:T.skip,letterSpacing:1,marginBottom:4}}>Location access was denied</div>
-            <div style={{...mono,fontSize:9,color:T.muted,lineHeight:1.7}}>To allow it: go to your browser settings → Site permissions → Location → Allow for temprunture.com. Or tap below to use NYC instead.</div>
-          </div>
-        )}
-        {hasGeo&&(
-          <button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:12,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"15px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:14,opacity:asking?0.7:1,width:"100%",maxWidth:300,fontWeight:500}}>
-            {asking?"Locating you...":"📍 Get My Run Forecast"}
-          </button>
-        )}
-        <button onClick={onSkip} style={{...mono,fontSize:10,color:T.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:1,textDecoration:"underline",marginBottom:8}}>
-          {hasGeo?"Use New York City instead":"Continue with New York City"}
-        </button>
-        <div style={{...mono,fontSize:8,color:T.dim,marginTop:4}}>📍 Location is only used to fetch your local forecast. Never stored.</div>
+    <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:"40px 24px",textAlign:"center"}}>
+      <div style={{fontSize:52,marginBottom:16}}>🏃</div>
+      <div style={{...cond,fontSize:38,fontWeight:700,letterSpacing:3,textTransform:"uppercase",lineHeight:1,marginBottom:12}}>
+        <span style={{color:C.muted}}>temp</span><span style={{color:C.green}}>RUN</span><span style={{color:C.muted}}>ture</span>
       </div>
-
-      {/* Feature list */}
-      <div style={{maxWidth:480,margin:"0 auto",padding:"0 24px 24px"}}>
-        <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:3,textTransform:"uppercase",textAlign:"center",marginBottom:20}}>What's inside</div>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {features.map(({icon,label,desc})=>(
-            <div key={label} style={{display:"flex",gap:14,alignItems:"flex-start",background:T.surface,borderRadius:12,padding:"14px 16px",border:`1px solid ${T.border}`}}>
-              <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{icon}</div>
-              <div>
-                <div style={{...mono,fontSize:11,color:T.green,fontWeight:500,marginBottom:4}}>{label}</div>
-                <div style={{...mono,fontSize:9,color:T.muted,lineHeight:1.7}}>{desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer CTA */}
-      <div style={{maxWidth:480,margin:"0 auto",padding:"16px 24px 56px",textAlign:"center"}}>
-        <div style={{...mono,fontSize:9,color:T.dim,letterSpacing:1,lineHeight:1.8}}>Free · No account needed · Works anywhere in the world</div>
-        {hasGeo&&(
-          <button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"13px 32px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginTop:16,opacity:asking?0.7:1}}>
-            {asking?"Locating you...":"📍 Get My Run Forecast"}
-          </button>
-        )}
-      </div>
+      <div style={{...mono,fontSize:10,color:C.muted,marginBottom:40,lineHeight:1.9,maxWidth:300}}>Live scored run windows with outfit picks, wind direction, air quality & pollen — for wherever you are.</div>
+      {hasGeo&&<button onClick={handleGrant} disabled={asking} style={{...mono,fontSize:11,color:C.bg,background:C.green,border:"none",borderRadius:10,padding:"14px 36px",cursor:asking?"default":"pointer",letterSpacing:1.5,marginBottom:14,opacity:asking?0.7:1,width:"100%",maxWidth:280}}>{asking?"Locating you...":"📍 Use My Location"}</button>}
+      <button onClick={onSkip} style={{...mono,fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:1,textDecoration:"underline"}}>{hasGeo?"Use New York City instead":"Continue with New York City"}</button>
     </div>
   );
 }
 
 // ─── Stepper Picker ────────────────────────────────────────────────────────────
 function StepperPicker({label,value,items,onChange}){
-  const T=useT();
   const idx=items.indexOf(value);
   const dec=()=>{if(idx>0)onChange(items[idx-1]);};
   const inc=()=>{if(idx<items.length-1)onChange(items[idx+1]);};
-  const btnStyle=disabled=>({...mono,fontSize:18,color:disabled?T.dim:T.green,background:"none",border:`1px solid ${disabled?T.border:T.border2}`,borderRadius:7,width:36,height:36,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
+  const btnStyle=disabled=>({...mono,fontSize:18,color:disabled?C.dim:C.green,background:"none",border:`1px solid ${disabled?C.border:C.border2}`,borderRadius:8,width:38,height:38,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
   return(
     <div>
-      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
-      <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"7px 10px"}}>
+      <div style={{...mono,fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>{label}</div>
+      <div style={{display:"flex",alignItems:"center",gap:10,background:C.surface2,borderRadius:10,border:`1px solid ${C.border2}`,padding:"10px 14px"}}>
         <button onClick={dec} disabled={idx<=0} style={btnStyle(idx<=0)}>−</button>
-        <div style={{flex:1,textAlign:"center"}}><div style={{...cond,fontSize:20,fontWeight:700,color:T.green,letterSpacing:1,lineHeight:1}}>{value}</div></div>
+        <div style={{flex:1,textAlign:"center"}}><div style={{...cond,fontSize:26,fontWeight:700,color:C.green,letterSpacing:1,lineHeight:1}}>{value}</div></div>
         <button onClick={inc} disabled={idx>=items.length-1} style={btnStyle(idx>=items.length-1)}>+</button>
       </div>
     </div>
   );
 }
+const DIST_ITEMS=Array.from({length:26},(_,i)=>`${i+1} mi`);
+const PACE_ITEMS=["5:00 /mi","5:30 /mi","6:00 /mi","6:30 /mi","7:00 /mi","7:30 /mi","8:00 /mi","8:30 /mi","9:00 /mi","9:30 /mi","10:00 /mi","10:30 /mi","11:00 /mi","11:30 /mi","12:00 /mi","13:00 /mi","14:00 /mi","15:00 /mi"];
 
-// ─── Dual Stepper ─────────────────────────────────────────────────────────────
-function DualStepper({label,leftLabel,rightLabel,leftValue,rightValue,leftItems,rightItems,onLeftChange,onRightChange}){
-  const T=useT();
-  const btnStyle=disabled=>({...mono,fontSize:16,color:disabled?T.dim:T.green,background:"none",border:`1px solid ${disabled?T.border:T.border2}`,borderRadius:6,width:32,height:32,cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"});
-  const li=leftItems.indexOf(leftValue),ri=rightItems.indexOf(rightValue);
-  return(
-    <div>
-      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{label}</div>
-      <div style={{display:"flex",gap:8}}>
-        {/* Left stepper */}
-        <div style={{flex:1,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"6px 8px"}}>
-          <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1,textAlign:"center",marginBottom:4}}>{leftLabel}</div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <button onClick={()=>{if(li>0)onLeftChange(leftItems[li-1]);}} disabled={li<=0} style={btnStyle(li<=0)}>−</button>
-            <div style={{flex:1,textAlign:"center",...cond,fontSize:20,fontWeight:700,color:T.green,lineHeight:1}}>{leftValue}</div>
-            <button onClick={()=>{if(li<leftItems.length-1)onLeftChange(leftItems[li+1]);}} disabled={li>=leftItems.length-1} style={btnStyle(li>=leftItems.length-1)}>+</button>
-          </div>
-        </div>
-        {/* Right stepper */}
-        <div style={{flex:1,background:T.surface2,borderRadius:9,border:`1px solid ${T.border2}`,padding:"6px 8px"}}>
-          <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1,textAlign:"center",marginBottom:4}}>{rightLabel}</div>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <button onClick={()=>{if(ri>0)onRightChange(rightItems[ri-1]);}} disabled={ri<=0} style={btnStyle(ri<=0)}>−</button>
-            <div style={{flex:1,textAlign:"center",...cond,fontSize:20,fontWeight:700,color:T.green,lineHeight:1}}>{rightValue}</div>
-            <button onClick={()=>{if(ri<rightItems.length-1)onRightChange(rightItems[ri+1]);}} disabled={ri>=rightItems.length-1} style={btnStyle(ri>=rightItems.length-1)}>+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-const DIST_WHOLE = Array.from({length:26},(_,i)=>`${i+1}`);
-const DIST_FRAC  = ["0",".25",".5",".75"];
-const PACE_MINS  = Array.from({length:11},(_,i)=>`${i+5}`);
-const PACE_SECS  = ["00","10","20","30","40","50"];
-
-// ─── Toggle ────────────────────────────────────────────────────────────────────
-function Toggle({val,label,sub,onToggle}){
-  const T=useT();
-  return(
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
-      <div><div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>{label}</div>{sub&&<div style={{...mono,fontSize:9,color:T.dim,marginTop:3}}>{sub}</div>}</div>
-      <div onClick={onToggle} style={{width:46,height:26,borderRadius:13,background:val?T.green:T.border2,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0,minWidth:46}}>
-        <div style={{position:"absolute",top:3,left:val?22:3,width:20,height:20,borderRadius:"50%",background:val?T.bg:T.muted,transition:"left .2s"}}/>
-      </div>
-    </div>
-  );
-}
-
-// ─── Settings Panel (bottom sheet) ────────────────────────────────────────────
+// ─── Settings Panel ────────────────────────────────────────────────────────────
 function SettingsPanel({settings,locationName,onSave,onClose,onResetLocation}){
-  const T=useT();
   const [loc,setLoc]=useState(settings);
-  const runSecs=loc.distance*loc.pace;
-  const runM=Math.floor(runSecs/60),runH=Math.floor(runM/60),runRem=runM%60;
-  const dur=runH>0?`${runH}h ${runRem}m`:`${runM}m`;
-  // Distance split into whole miles + fraction
-  const distWhole=String(Math.floor(loc.distance));
-  const distFracRaw=Math.round((loc.distance-Math.floor(loc.distance))*4)/4;
-  const distFrac=distFracRaw===0?"0":distFracRaw===0.25?".25":distFracRaw===0.5?".5":".75";
-  // Pace split into whole minutes + seconds
-  const paceMins=String(Math.floor(loc.pace/60));
-  const paceSecs=String(loc.pace%60).padStart(2,"0");
-
-  // Lock background scroll while open
-  useEffect(()=>{
-    const prev=document.body.style.overflow;
-    document.body.style.overflow="hidden";
-    return()=>{ document.body.style.overflow=prev; };
-  },[]);
-
+  const mins=loc.distance*loc.pace,hrs=Math.floor(mins/60),rem=mins%60;
+  const dur=hrs>0?`${hrs}h ${rem}m`:`${rem} min`;
+  const Toggle=({val,label,sub,onToggle})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div><div style={{...mono,fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>{label}</div>{sub&&<div style={{...mono,fontSize:8,color:C.dim,marginTop:4}}>{sub}</div>}</div>
+      <div onClick={onToggle} style={{width:42,height:24,borderRadius:12,background:val?C.green:C.border2,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+        <div style={{position:"absolute",top:3,left:val?20:3,width:18,height:18,borderRadius:"50%",background:val?C.bg:C.muted,transition:"left .2s"}}/>
+      </div>
+    </div>
+  );
   return(
-    <div style={{position:"fixed",inset:0,zIndex:100}}>
-      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.55)"}}/>
-      <div
-        style={{position:"absolute",bottom:0,left:0,right:0,background:T.surface,borderRadius:"20px 20px 0 0",maxHeight:"85vh",overflowY:"auto",paddingBottom:"max(40px, calc(env(safe-area-inset-bottom) + 24px))"}}
-        onTouchStart={e=>e.stopPropagation()}
-        onTouchEnd={e=>e.stopPropagation()}
-        onTouchMove={e=>e.stopPropagation()}
-      >
-        <div style={{height:8}}/>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 20px 12px",borderBottom:`1px solid ${T.border}`}}>
-          <div style={{...cond,fontSize:22,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
-          <button onClick={onClose} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.surface2,border:`1px solid ${T.border2}`,borderRadius:"50%",cursor:"pointer",fontSize:16,color:T.muted,flexShrink:0}}>✕</button>
+    <div style={{position:"fixed",inset:0,zIndex:100,display:"flex",justifyContent:"flex-end"}}>
+      <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.6)"}}/>
+      <div style={{position:"relative",width:"min(340px,90vw)",background:C.surface,borderLeft:`1px solid ${C.border2}`,padding:"28px 24px",overflowY:"auto",display:"flex",flexDirection:"column",gap:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{...cond,fontSize:24,fontWeight:700,color:C.text,letterSpacing:3,textTransform:"uppercase"}}>Settings</div>
+          <button onClick={onClose} style={{...mono,fontSize:16,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"4px 8px"}}>✕</button>
         </div>
-        <div style={{padding:"14px 20px",display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{paddingBottom:10,borderBottom:`1px solid ${T.border}`}}>
-            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Location</div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{...mono,fontSize:11,color:T.text}}>{locationName}</div>
-              <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:9,color:T.muted,background:"none",border:`1px solid ${T.border2}`,borderRadius:6,padding:"5px 10px",cursor:"pointer",letterSpacing:1,flexShrink:0}}>📍 Change</button>
-            </div>
-          </div>
-          <DualStepper
-            label="Run Distance"
-            leftLabel="Miles" rightLabel="+ Fraction"
-            leftValue={distWhole} rightValue={distFrac}
-            leftItems={DIST_WHOLE} rightItems={DIST_FRAC}
-            onLeftChange={v=>setLoc(l=>({...l,distance:parseFloat(v)+parseFloat(distFrac)}))}
-            onRightChange={v=>setLoc(l=>({...l,distance:Math.floor(l.distance)+parseFloat(v)}))}
-          />
-          <DualStepper
-            label="Pace"
-            leftLabel="Min /mi" rightLabel="Sec /mi"
-            leftValue={paceMins} rightValue={paceSecs}
-            leftItems={PACE_MINS} rightItems={PACE_SECS}
-            onLeftChange={v=>setLoc(l=>({...l,pace:parseInt(v)*60+(l.pace%60)}))}
-            onRightChange={v=>setLoc(l=>({...l,pace:Math.floor(l.pace/60)*60+parseInt(v)}))}
-          />
-          <div style={{background:T.surface2,borderRadius:9,padding:"10px 14px",border:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1}}>Est. run time</div>
-            <div style={{textAlign:"right"}}>
-              <span style={{...cond,fontSize:22,fontWeight:700,color:T.green,letterSpacing:1}}>{dur}</span>
-              <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{loc.distance} mi · {paceMins}:{paceSecs}/mi</div>
-            </div>
-          </div>
-          <Toggle val={loc.daylightOnly} label="Daylight runs only" sub="Exclude windows after sunset" onToggle={()=>setLoc(l=>({...l,daylightOnly:!l.daylightOnly}))}/>
-          <div style={{padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>Theme</div>
-              <div style={{...mono,fontSize:8,color:T.dim}}>Auto = sunrise & sunset</div>
-            </div>
-            <div style={{display:"flex",gap:5}}>
-              {[{id:"auto",label:"☀️→🌙 Auto"},{id:"light",label:"☀️ Light"},{id:"dark",label:"🌙 Dark"}].map(({id,label})=>(
-                <button key={id} onClick={()=>setLoc(l=>({...l,theme:id}))} style={{flex:1,padding:"7px 0",borderRadius:7,border:`1px solid ${loc.theme===id?T.green:T.border2}`,cursor:"pointer",background:loc.theme===id?`${T.green}20`:T.surface2,color:loc.theme===id?T.green:T.muted,...mono,fontSize:9,letterSpacing:0.5,transition:"all .15s"}}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0"}}>
-            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase"}}>Temperature</div>
-            <div style={{display:"inline-flex",gap:3,background:T.surface2,borderRadius:7,padding:3,border:`1px solid ${T.border2}`}}>
-              {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"6px 20px",borderRadius:5,border:"none",cursor:"pointer",background:loc.tempUnit===u?T.green:"transparent",color:loc.tempUnit===u?T.bg:T.muted,...mono,fontSize:11,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
-            </div>
-          </div>
-          <div style={{padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Color</div>
-            <div style={{display:"flex",gap:10,alignItems:"center"}}>
-              {Object.entries(ACCENTS).map(([key,acc])=>(
-                <button key={key} onClick={()=>setLoc(l=>({...l,accentColor:key}))}
-                  title={acc.name}
-                  style={{width:loc.accentColor===key?34:28,height:loc.accentColor===key?34:28,borderRadius:"50%",background:acc.dot,border:loc.accentColor===key?`3px solid ${T.text}`:`2px solid transparent`,cursor:"pointer",transition:"all .2s",flexShrink:0,boxShadow:loc.accentColor===key?`0 0 12px ${acc.dot}80`:"none"}}
-                />
-              ))}
-              <div style={{...mono,fontSize:9,color:T.muted,marginLeft:4}}>{ACCENTS[loc.accentColor||"forest"]?.name}</div>
-            </div>
-          </div>
-          <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:9,padding:"12px 24px",cursor:"pointer",letterSpacing:1.5,width:"100%"}}>Save</button>
+        <div style={{borderBottom:`1px solid ${C.border}`,paddingBottom:20}}>
+          <div style={{...mono,fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Location</div>
+          <div style={{...mono,fontSize:11,color:C.text,marginBottom:10}}>{locationName}</div>
+          <button onClick={()=>{onResetLocation();onClose();}} style={{...mono,fontSize:9,color:C.muted,background:"none",border:`1px solid ${C.border2}`,borderRadius:6,padding:"6px 14px",cursor:"pointer",letterSpacing:1}}>📍 Change Location</button>
         </div>
+        <StepperPicker label="Run Distance" value={`${loc.distance} mi`} items={DIST_ITEMS} onChange={v=>setLoc(l=>({...l,distance:parseInt(v)}))}/>
+        <StepperPicker label="Pace" value={PACE_ITEMS.find(p=>p.startsWith(`${loc.pace}:`))||`${loc.pace}:00 /mi`} items={PACE_ITEMS} onChange={v=>setLoc(l=>({...l,pace:parseInt(v)}))}/>
+        <div style={{background:C.surface2,borderRadius:10,padding:"14px 16px",border:`1px solid ${C.border}`}}>
+          <div style={{...mono,fontSize:9,color:C.muted,letterSpacing:1,marginBottom:6}}>Estimated run time</div>
+          <div style={{...cond,fontSize:28,fontWeight:700,color:C.green,letterSpacing:2}}>{dur}</div>
+          <div style={{...mono,fontSize:9,color:C.dim,marginTop:4}}>{loc.distance} mi at {loc.pace}:00/mi</div>
+        </div>
+        <Toggle val={loc.daylightOnly} label="Daylight runs only" sub="Exclude windows after sunset" onToggle={()=>setLoc(l=>({...l,daylightOnly:!l.daylightOnly}))}/>
+        <div style={{borderTop:`1px solid ${C.border}`,paddingTop:20}}>
+          <div style={{...mono,fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Temperature Unit</div>
+          <div style={{display:"inline-flex",gap:2,background:C.surface2,borderRadius:8,padding:3,border:`1px solid ${C.border2}`}}>
+            {["F","C"].map(u=><button key={u} onClick={()=>setLoc(l=>({...l,tempUnit:u}))} style={{padding:"7px 22px",borderRadius:6,border:"none",cursor:"pointer",background:loc.tempUnit===u?C.green:"transparent",color:loc.tempUnit===u?C.bg:C.muted,...mono,fontSize:11,fontWeight:500,letterSpacing:1}}>°{u}</button>)}
+          </div>
+        </div>
+        <button onClick={()=>{onSave(loc);onClose();}} style={{...mono,fontSize:11,color:C.bg,background:C.green,border:"none",borderRadius:8,padding:"12px 24px",cursor:"pointer",letterSpacing:1.5}}>Save</button>
       </div>
     </div>
   );
 }
 
 // ─── Main App ──────────────────────────────────────────────────────────────────
-export default function App(){
+export default function App() {
   const [phase,setPhase]=useState("init");
   const [location,setLocation]=useState(null);
   const [weather,setWeather]=useState(null);
-  const [view,setView]=useState("today");
+  const [view,setView]=useState("tomorrow");
   const [settings,setSettings]=useState(DEFAULT_SETTINGS);
   const [showSettings,setShowSettings]=useState(false);
   const [shareMsg,setShareMsg]=useState(null);
@@ -610,29 +390,15 @@ export default function App(){
   const [showPWA,setShowPWA]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [touchStartY,setTouchStartY]=useState(null);
-  const [pullDist,setPullDist]=useState(0);
-  const [feedback,setFeedback]=useState(null); // 'up' | 'down' | null
-  const [expandedHour,setExpandedHour]=useState(null); // hr number of expanded card
-
-  // Theme
-  const isDark=useMemo(()=>{
-    const ov=settings.theme||"auto";
-    if(ov==="dark")return true;
-    if(ov==="light")return false;
-    const now=new Date(),h=now.getHours()+now.getMinutes()/60;
-    const rise=weather?.today?.sunTimes?.sunrise??weather?.tomorrow?.sunTimes?.sunrise??6.5;
-    const set=weather?.today?.sunTimes?.sunset??weather?.tomorrow?.sunTimes?.sunset??19.5;
-    return h<rise||h>=set;
-  },[settings.theme,weather]);
-  const T=applyAccent(isDark?DARK:LIGHT, settings.accentColor||"forest", isDark);
-  useEffect(()=>{document.body.style.background=T.bg;},[T]);
+  const [feedback,setFeedback]=useState(null);
+  const [expandedHour,setExpandedHour]=useState(null);
 
   const loadWeather=useCallback(async(loc,apiKey)=>{
     setPhase("loading");setLoadError("");
-    try{
+    try {
       const data=await fetchLiveWeather(loc.lat,loc.lon,apiKey);
       setWeather(data);setPhase("ready");setTimeout(()=>setVisible(true),60);
-    }catch(err){
+    } catch(err){
       const msg=err.message||"";
       if(msg.includes("401")||msg.includes("403")||msg.includes("Invalid")||msg.includes("invalid")){setLoadError("Invalid API key.");setPhase("error");return;}
       if(msg.includes("429")){setLoadError("Rate limit hit — try again in a minute.");setPhase("error");return;}
@@ -644,18 +410,14 @@ export default function App(){
 
   useEffect(()=>{
     const style=document.createElement("style");
-    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html,body{overscroll-behavior-y:none;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.3);}::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{border-radius:2px;}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}@keyframes pullFade{0%{opacity:0;transform:translateY(-20px)}100%{opacity:1;transform:translateY(0)}}`;
+    style.textContent=`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;600;700&family=DM+Sans:wght@300;400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{background:#050c08;}.fade{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s ease;}.fade.in{opacity:1;transform:translateY(0);}@keyframes breathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.7}}@keyframes breathe2{0%,100%{transform:scale(1) rotate(0deg);opacity:.3}50%{transform:scale(1.05) rotate(-4deg);opacity:.45}}@keyframes rain{0%{transform:translateY(-5%) translateX(0);opacity:.4}100%{transform:translateY(110vh) translateX(-35px);opacity:0}}@keyframes windStreak{0%{transform:translateX(-100px);opacity:0}50%{opacity:.15}100%{transform:translateX(110vw);opacity:0}}.tog{transition:all .18s;}.tog:hover{opacity:.8;}.hbar{transition:filter .2s;cursor:default;}.hbar:hover{filter:brightness(1.4);}tr.dr{transition:background .15s;}tr.dr:hover{background:#0a332030!important;}::-webkit-scrollbar{width:3px;height:3px;}::-webkit-scrollbar-thumb{background:#1e3024;border-radius:2px;}`;
     document.head.appendChild(style);
-    try{
+    try {
       const sLoc=JSON.parse(localStorage.getItem("wsr_loc")||"null");
       const sSett=JSON.parse(localStorage.getItem("wsr_settings")||"null");
-      if(sSett){
-        const migrated={...DEFAULT_SETTINGS,...sSett};
-        if(sSett.pace&&sSett.pace<60)migrated.pace=sSett.pace*60;
-        setSettings(migrated);
-      }
+      if(sSett)setSettings({...DEFAULT_SETTINGS,...sSett});
       if(sLoc){setLocation(sLoc);loadWeather(sLoc,(sSett?.apiKey||DEFAULT_SETTINGS.apiKey));return;}
-    }catch{}
+    } catch{}
     setPhase("location");
   },[loadWeather]);
 
@@ -664,16 +426,9 @@ export default function App(){
   },[phase]);
 
   const handleTouchStart=useCallback((e)=>{if(window.scrollY===0)setTouchStartY(e.touches[0].clientY);},[]);
-  const handleTouchMove=useCallback((e)=>{
-    if(touchStartY===null||refreshing)return;
-    const dy=e.touches[0].clientY-touchStartY;
-    if(dy>0&&window.scrollY===0)setPullDist(Math.min(dy,120));
-    else setPullDist(0);
-  },[touchStartY,refreshing]);
   const handleTouchEnd=useCallback((e)=>{
     if(touchStartY===null)return;
     const dy=e.changedTouches[0].clientY-touchStartY;setTouchStartY(null);
-    setPullDist(0);
     if(dy>72&&!refreshing){
       setRefreshing(true);
       const key=settings.apiKey||DEFAULT_SETTINGS.apiKey;
@@ -708,435 +463,378 @@ export default function App(){
     setLocation(null);setWeather(null);setPhase("location");
   },[]);
 
-  const bgStyle={background:T.bg,fontFamily:"'DM Sans',sans-serif",color:T.text};
-
   if(phase==="init"||phase==="loading")return(
-    <ThemeCtx.Provider value={T}>
-      <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:14,textAlign:"center",padding:20}}>
-        <div style={{display:"flex",alignItems:"baseline"}}>
-          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-          <span style={{...cond,fontSize:50,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:1}}>RUN</span>
-          <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
-        </div>
-        <div style={{...mono,fontSize:11,color:T.muted,letterSpacing:1}}>{location?.name||"Fetching weather..."}</div>
-        <Dots/>
-      </div>
-    </ThemeCtx.Provider>
+    <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:14,textAlign:"center",padding:20}}>
+      <div style={{...cond,fontSize:32,letterSpacing:3}}><span style={{color:C.muted}}>temp</span><span style={{color:C.green}}>RUN</span><span style={{color:C.muted}}>ture</span></div>
+      <div style={{...mono,fontSize:10,color:C.muted,letterSpacing:1}}>{location?.name||"Fetching weather..."}</div>
+      <Dots/>
+    </div>
   );
-  if(phase==="location")return<ThemeCtx.Provider value={T}><LocationScreen onGrant={handleGrant} onSkip={handleSkip}/></ThemeCtx.Provider>;
+  if(phase==="location")return <LocationScreen onGrant={handleGrant} onSkip={handleSkip}/>;
   if(phase==="error")return(
-    <ThemeCtx.Provider value={T}>
-      <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:0,textAlign:"center",padding:32}}>
-        <div style={{fontSize:44,marginBottom:16}}>🌧️</div>
-        <div style={{...cond,fontSize:26,color:T.text,letterSpacing:2,marginBottom:10}}>Couldn't load the forecast</div>
-        <div style={{...mono,fontSize:11,color:T.muted,maxWidth:300,lineHeight:1.9,marginBottom:24}}>{loadError}</div>
-        <button onClick={()=>loadWeather(location||DEFAULT_LOC,settings.apiKey||DEFAULT_SETTINGS.apiKey)}
-          style={{...mono,fontSize:11,color:T.bg,background:T.green,border:"none",borderRadius:10,padding:"13px 32px",cursor:"pointer",letterSpacing:1.5,marginBottom:14}}>
-          Try again
-        </button>
-        <button onClick={()=>{
-          const now=new Date(),tom=new Date(now);tom.setDate(now.getDate()+1);
-          setWeather({isLive:false,today:makeFallbackDay(now),tomorrow:makeFallbackDay(tom)});
-          setPhase("ready");setTimeout(()=>setVisible(true),60);
-        }} style={{...mono,fontSize:10,color:T.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",letterSpacing:1}}>
-          Use seasonal estimates instead
-        </button>
-        <div style={{...mono,fontSize:8,color:T.dim,marginTop:20,maxWidth:260,lineHeight:1.8}}>Seasonal estimates are based on historical averages for your time of year — less precise but still useful.</div>
-      </div>
-    </ThemeCtx.Provider>
+    <div style={{...bgStyle,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:16,textAlign:"center",padding:32}}>
+      <div style={{fontSize:36}}>⚠️</div>
+      <div style={{...cond,fontSize:22,color:C.skip,letterSpacing:2}}>Weather fetch failed</div>
+      <div style={{...mono,fontSize:10,color:C.muted,maxWidth:300,lineHeight:1.8}}>{loadError}</div>
+    </div>
   );
   if(!weather)return null;
 
   const dayData=view==="today"?weather.today:weather.tomorrow;
   const sun=dayData.sunTimes||{sunrise:6.5,sunset:19.5};
-  // For today: only score windows starting from the current hour onward
   const nowHour=view==="today"?new Date().getHours():null;
   const {hours,best}=processHours(dayData.hours||[],sun,settings.daylightOnly,nowHour);
   const bh=best?hours[best.startIdx]:null;
-  const col=bh?sc(best.avgScore,T):T.green;
-  const runMins=Math.round(settings.distance*settings.pace/60);
-  const winStart=bh?.hr||0;
-  const winEnd=winStart+2;
-  const retTotal=bh?winStart*60+runMins:0;
+  const col=bh?sc(best.avgScore):C.green;
+  const runMins=settings.distance*settings.pace;
+  const retTotal=bh?(bh.hr*60+runMins):0;
   const retH=Math.floor(retTotal/60),retM=retTotal%60;
   const retStr=retM>0?`${retH%12||12}:${String(retM).padStart(2,"0")}${retH>=12?"pm":"am"}`:fmt12(retH);
-  const dirRec=bh?getDirRec(dayData.windDeg,bh.w):{headline:"",detail:""};
+  const dirRec=bh?getDirRec(dayData.windDeg,bh.w):{startDir:"Any",headline:"",sub:"",detail:""};
   const outfit=bh?getOutfit(bh):null;
   const tu=settings.tempUnit||"F";
 
   return(
-    <ThemeCtx.Provider value={T}>
-      <div style={{...bgStyle,minHeight:"100vh",position:"relative",overflow:"hidden"}} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-        <WeatherBg hours={hours}/>
-        {/* Pull indicator — shows while pulling, then spins while refreshing */}
-        {(pullDist>10||refreshing)&&(
-          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,display:"flex",justifyContent:"center",paddingTop:`max(${Math.min(pullDist*0.4+8, 20)}px, env(safe-area-inset-top))`,pointerEvents:"none",animation:refreshing?"pullFade 0.2s ease":"none"}}>
-            <div style={{background:T.surface,border:`1px solid ${T.border2}`,borderRadius:24,padding:"8px 18px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",opacity:refreshing?1:Math.min(pullDist/72,1)}}>
-              <div style={{width:16,height:16,border:`2px solid ${T.border2}`,borderTopColor:T.green,borderRadius:"50%",animation:refreshing?"spin 0.7s linear infinite":"none",transform:refreshing?"none":`rotate(${pullDist*3}deg)`,transition:refreshing?"none":"transform 0.05s"}}>
+    <div style={{...bgStyle,minHeight:"100vh",position:"relative",overflow:"hidden"}} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <WeatherBg hours={hours}/>
+      {refreshing&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,textAlign:"center",padding:"10px",background:C.surface,borderBottom:`1px solid ${C.border2}`,...mono,fontSize:9,color:C.green,letterSpacing:2}}>↻ REFRESHING...</div>}
+      {showPWA&&phase==="ready"&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
+      {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
+
+      <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"36px 20px 64px"}}>
+
+        {/* ── Header ── */}
+        <div className={`fade ${visible?"in":""}`} style={{marginBottom:28,...dd(0)}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{location?.name||"Upper West Side, NYC"}</div>
+              <div style={{...cond,fontSize:36,fontWeight:700,letterSpacing:4,textTransform:"uppercase",lineHeight:1}}>
+                <span style={{color:C.muted}}>temp</span><span style={{color:C.green}}>RUN</span><span style={{color:C.muted}}>ture</span>
               </div>
-              <div style={{...mono,fontSize:9,color:T.green,letterSpacing:2}}>{refreshing?"UPDATING FORECAST...":pullDist>72?"RELEASE TO REFRESH":"PULL TO REFRESH"}</div>
+              <div style={{...mono,fontSize:8,marginTop:5,letterSpacing:1,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:weather.isLive?C.green:C.dim}}>{weather.isLive?"● Live":"◌ Estimate"}</span>
+                {weather.fetchedAt&&<span style={{color:C.muted}}>· Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
+              </div>
+            </div>
+            <button onClick={()=>setShowSettings(true)} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${C.border2}`,borderRadius:10,cursor:"pointer",fontSize:22,color:C.muted,marginTop:4,flexShrink:0}}>⚙️</button>
+          </div>
+          <div style={{...mono,fontSize:9,color:C.muted,marginTop:8}}>{dayData.label.toUpperCase()}</div>
+          <div style={{display:"inline-flex",gap:2,marginTop:14,background:C.surface,borderRadius:8,padding:3,border:`1px solid ${C.border2}`}}>
+            {[{id:"tomorrow",label:"Tomorrow"},{id:"today",label:"Today"}].map(({id,label})=>(
+              <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setFeedback(null);setExpandedHour(null);setTimeout(()=>setVisible(true),40);}}
+                style={{padding:"7px 20px",borderRadius:6,border:"none",cursor:"pointer",background:view===id?C.green:"transparent",color:view===id?C.bg:C.muted,...mono,fontSize:10,fontWeight:view===id?500:300,letterSpacing:1.5,textTransform:"uppercase"}}>{label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Hero card ── */}
+        {bh&&(
+          <div className={`fade ${visible?"in":""}`} style={{...dd(120),marginBottom:16}}>
+            <div style={{background:C.surface,borderRadius:20,border:`1px solid ${C.border2}`,padding:"28px 24px 24px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}50,transparent)`}}/>
+              <div style={{position:"absolute",top:0,right:0,width:120,height:120,background:`radial-gradient(circle at top right,${col}10,transparent 70%)`,pointerEvents:"none"}}/>
+
+              {/* Score arc + window time side by side */}
+              <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+                <div style={{position:"relative",width:200,height:200,flexShrink:0,margin:"-20px -16px -20px -16px"}}>
+                  <ScoreArc score={best.avgScore} color={col} animate={visible}/>
+                  <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-48%)",textAlign:"center"}}>
+                    <div style={{...cond,fontSize:44,fontWeight:700,color:col,lineHeight:1,letterSpacing:1}}><AnimNum value={best.avgScore}/></div>
+                    <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,marginTop:1}}>/100</div>
+                    <div style={{...mono,fontSize:9,color:col,letterSpacing:2,marginTop:7,fontWeight:500}}>{sl(best.avgScore)}</div>
+                  </div>
+                </div>
+                <div style={{flex:1,minWidth:130}}>
+                  <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Best Window</div>
+                  <div style={{...serif,fontSize:42,fontWeight:300,color:C.text,lineHeight:0.95,letterSpacing:-1}}>{fmt12(bh.hr)} – {fmt12(bh.hr+2)}</div>
+                  <div style={{...mono,fontSize:9,color:C.muted,marginTop:10}}>Back by ~{retStr}</div>
+                  <div style={{...mono,fontSize:8,color:C.dim,marginTop:3}}>{settings.distance} mi · {settings.pace}:00/mi</div>
+                </div>
+              </div>
+
+              {/* 5 metric tiles */}
+              <div style={{display:"flex",gap:8,marginTop:22}}>
+                {[
+                  {icon:"🌡",label:"Temp",  value:displayTemp(bh.t,tu),  score:bh.bd.temperature},
+                  {icon:"🌧",label:"Precip",  value:`${bh.p}%`,            score:bh.bd.precipitation},
+                  {icon:"💨",label:"Wind",  value:`${bh.w}mph`,          score:bh.bd.wind},
+                  {icon:"💚",label:"AQI",   value:aqiLabel(bh.aqi||40).l,score:bh.bd.aqi,   c:aqiLabel(bh.aqi||40).c},
+                  {icon:"🌿",label:"Pollen",value:polLabel(bh.pollen||0).l,score:bh.bd.pollen,c:polLabel(bh.pollen||0).c},
+                ].map(({icon,label,value,score,c})=>{
+                  const fc=c||sc(score);
+                  return(
+                    <div key={label} style={{flex:1,minWidth:0,background:C.surface2,borderRadius:10,border:`1px solid ${C.border2}`,padding:"10px 4px",textAlign:"center",display:"flex",flexDirection:"column",gap:4}}>
+                      <div style={{fontSize:14}}>{icon}</div>
+                      <div style={{...mono,fontSize:7,color:C.muted,letterSpacing:1,textTransform:"uppercase"}}>{label}</div>
+                      <div style={{...mono,fontSize:10,color:fc,fontWeight:500,letterSpacing:0.5,lineHeight:1.1}}>{value}</div>
+                      <div style={{...mono,fontSize:7,color:C.dim}}>{score}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Why this window — above bars */}
+              {(()=>{const why=getWhyExplainer(bh,best);return(
+                <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"flex-start",gap:10}}>
+                  <span style={{color:col,fontSize:14,flexShrink:0,marginTop:1}}>💬</span>
+                  <div>
+                    <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>Why this window?</div>
+                    <div style={{...mono,fontSize:10,color:C.text,lineHeight:1.7}}>{why}</div>
+                  </div>
+                </div>
+              );})()}
+
+              {/* 7-factor score bars */}
+              <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${C.border}`}}>
+                {[
+                  {key:"temperature",  label:"Temp",    icon:"🌡", actual:displayTemp(bh.t,tu)},
+                  {key:"precipitation",label:"Precip",  icon:"🌧", actual:`${bh.p}%`},
+                  {key:"wind",         label:"Wind",    icon:"💨", actual:`${bh.w} mph`},
+                  {key:"aqi",          label:"AQI",     icon:"💚", actual:aqiLabel(bh.aqi||40).l},
+                  {key:"pollen",       label:"Pollen",  icon:"🌿", actual:polLabel(bh.pollen||0).l},
+                  {key:"uv",           label:"UV",      icon:"☀️", actual:`${bh.u}`},
+                  {key:"humidity",     label:"Humidity",icon:"💧", actual:`${bh.h}%`},
+                ].map(({key,label,icon,actual},fi)=>{
+                  const sv=bh.bd[key],fc=sc(sv);
+                  return(
+                    <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <div style={{fontSize:11,width:18,flexShrink:0}}>{icon}</div>
+                      <div style={{...mono,fontSize:9,color:C.muted,width:60,letterSpacing:1,flexShrink:0}}>{label}</div>
+                      <div style={{flex:1,background:C.surface2,borderRadius:2,height:3,overflow:"hidden"}}>
+                        <div style={{width:visible?`${sv}%`:"0%",height:"100%",background:`linear-gradient(90deg,${C.greenDeep},${fc})`,borderRadius:2,boxShadow:`0 0 8px ${fc}50`,transition:"width 1.1s cubic-bezier(0.4,0,0.2,1)",transitionDelay:`${300+fi*70}ms`}}/>
+                      </div>
+                      <div style={{...mono,fontSize:9,color:fc,width:20,textAlign:"right",fontWeight:500}}>{sv}</div>
+                      <div style={{...mono,fontSize:9,color:C.muted,width:52,textAlign:"right"}}>{actual}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Share */}
+              <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${C.border}`,display:"flex",gap:10,alignItems:"center"}}>
+                <button onClick={async()=>{const r=await doShare(bh,best,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:10,color:C.green,background:`${C.green}15`,border:`1px solid ${C.green}40`,borderRadius:8,padding:"9px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
+                {shareMsg&&<div style={{...mono,fontSize:9,color:C.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
+              </div>
             </div>
           </div>
         )}
-        {showPWA&&<PWABanner onDismiss={()=>{setShowPWA(false);try{sessionStorage.setItem("pwa_dismissed","1");}catch{}}}/>}
-        {showSettings&&<SettingsPanel settings={settings} locationName={location?.name||"Unknown"} onSave={handleSettingsSave} onClose={()=>setShowSettings(false)} onResetLocation={handleResetLocation}/>}
 
-        <div style={{position:"relative",zIndex:1,maxWidth:520,margin:"0 auto",padding:"max(56px, calc(env(safe-area-inset-top) + 24px)) 20px 64px",transform:refreshing?"translateY(60px)":`translateY(${Math.min(pullDist*0.5,60)}px)`,transition:refreshing?"transform 0.2s ease":pullDist>0?"none":"transform 0.3s ease"}}>
-
-          {/* Header */}
-          <div className={`fade ${visible?"in":""}`} style={{marginBottom:28,...dd(0)}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
-                <div style={{display:"flex",alignItems:"baseline"}}>
-                  <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-                  <span style={{...cond,fontSize:52,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:3,marginRight:8,textTransform:"uppercase",lineHeight:0.9}}>RUN</span>
-                  <span style={{...cond,fontSize:20,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
-                </div>
-                <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:2,marginTop:6}}>{location?.name||"Upper West Side, NYC"}</div>
-                <div style={{...mono,fontSize:9,marginTop:4,letterSpacing:1,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:weather.isLive?T.green:T.dim}}>{weather.isLive?"● Live":"◌ Estimate"}</span>
-                  {weather.fetchedAt&&<span style={{color:T.muted}}>· Updated {Math.round((Date.now()-weather.fetchedAt)/60000)||"<1"} min ago</span>}
-                </div>
+        {/* Feedback card */}
+        {bh&&(
+          <div className={`fade ${visible?"in":""}`} style={{marginBottom:16}}>
+            <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border2}`,padding:"18px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{...mono,fontSize:10,color:C.muted,letterSpacing:1}}>Was this forecast helpful?</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {feedback&&<div style={{...mono,fontSize:9,color:C.green,marginRight:4}}>{feedback==="up"?"Thanks! 🎉":"Got it, thanks"}</div>}
+                {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
+                  <button key={v} onClick={()=>{setFeedback(f=>f===v?null:v);if(feedback!==v)submitFeedback(v,bh,best,location?.name,view);}}
+                    style={{fontSize:20,background:feedback===v?`${C.green}20`:"none",border:`1px solid ${feedback===v?C.green:C.border2}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",transition:"all .15s",lineHeight:1}}>
+                    {e}
+                  </button>
+                ))}
               </div>
-              <button onClick={()=>setShowSettings(true)} style={{width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${T.border2}`,borderRadius:10,cursor:"pointer",fontSize:22,color:T.muted,marginTop:4,flexShrink:0}}>⚙️</button>
-            </div>
-            <div style={{...mono,fontSize:10,color:T.muted,marginTop:10}}>{dayData.label.toUpperCase()}</div>
-            <div style={{display:"inline-flex",gap:2,marginTop:14,background:T.surface,borderRadius:8,padding:3,border:`1px solid ${T.border2}`}}>
-              {[{id:"today",label:"Today"},{id:"tomorrow",label:"Tomorrow"}].map(({id,label})=>(
-                <button key={id} className="tog" onClick={()=>{setView(id);setVisible(false);setFeedback(null);setExpandedHour(null);setTimeout(()=>setVisible(true),40);}}
-                  style={{padding:"8px 22px",borderRadius:6,border:"none",cursor:"pointer",background:view===id?T.green:"transparent",color:view===id?T.bg:T.muted,...mono,fontSize:11,fontWeight:view===id?500:300,letterSpacing:1.5,textTransform:"uppercase"}}>{label}
-                </button>
-              ))}
             </div>
           </div>
+        )}
 
-          {/* Hero */}
-          {bh&&(
+        {/* ── Bad day ── */}
+        {!bh&&hours.length>0&&(()=>{
+          const msg=BAD_DAY_MSGS[new Date().getDate()%BAD_DAY_MSGS.length];
+          const worstScore=Math.max(...hours.map(h=>h.score));
+          return(
             <div className={`fade ${visible?"in":""}`} style={{...dd(120),marginBottom:16}}>
-              <div style={{background:T.surface,borderRadius:20,border:`1px solid ${T.border2}`,padding:"28px 24px 24px",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}50,transparent)`}}/>
-                <div style={{position:"absolute",top:0,right:0,width:120,height:120,background:`radial-gradient(circle at top right,${col}12,transparent 70%)`,pointerEvents:"none"}}/>
-                <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-                  <div style={{position:"relative",width:200,height:200,flexShrink:0,margin:"-20px -16px -20px -16px"}}>
-                    <ScoreArc score={best.avgScore} color={col} animate={visible}/>
-                    <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-48%)",textAlign:"center"}}>
-                      <div style={{...cond,fontSize:46,fontWeight:700,color:col,lineHeight:1,letterSpacing:1}}><AnimNum value={best.avgScore}/></div>
-                      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,marginTop:1}}>/100</div>
-                      <div style={{...mono,fontSize:10,color:col,letterSpacing:2,marginTop:7,fontWeight:500}}>{sl(best.avgScore)}</div>
-                    </div>
-                  </div>
-                  <div style={{flex:1,minWidth:130}}>
-                    <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:8,marginLeft:12}}>Best Window</div>
-                    <div style={{...serif,fontSize:44,fontWeight:300,color:T.text,lineHeight:0.95,letterSpacing:-1,marginLeft:12}}>{fmt12(winStart)} – {fmt12(winEnd)}</div>
-                    <div style={{...mono,fontSize:10,color:T.muted,marginTop:10,marginLeft:12}}>Back by ~{retStr}</div>
-                    <div style={{...mono,fontSize:9,color:T.dim,marginTop:3,marginLeft:12}}>{settings.distance} mi · {paceToStr(settings.pace)}</div>
-                  </div>
+              <div style={{background:C.surface,borderRadius:20,border:`1px solid ${C.border2}`,padding:"40px 28px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${C.skip}40,transparent)`}}/>
+                <div style={{fontSize:56,marginBottom:16}}>{msg.emoji}</div>
+                <div style={{...cond,fontSize:32,fontWeight:700,color:C.text,letterSpacing:3,textTransform:"uppercase",lineHeight:1,marginBottom:8}}>{msg.title}</div>
+                <div style={{...mono,fontSize:11,color:C.muted,lineHeight:1.8,marginBottom:20}}>{msg.sub}</div>
+                <div style={{...mono,fontSize:9,color:C.dim,lineHeight:1.8}}>Best score: <span style={{color:C.skip}}>{worstScore}/100</span></div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── Direction tile (generalized) ── */}
+        {bh&&(
+          <div className={`fade ${visible?"in":""}`} style={{...dd(220),marginBottom:16}}>
+            <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}40,transparent)`}}/>
+              <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>Start Direction</div>
+              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+                <WindRose windDeg={dayData.windDeg} color={col}/>
+                <div style={{flex:1}}>
+                  <div style={{...cond,fontSize:22,fontWeight:700,color:C.text,letterSpacing:2,lineHeight:1,textTransform:"uppercase"}}>{dirRec.headline}</div>
+                  <div style={{...mono,fontSize:9,color:col,marginTop:6}}>{compassLabel(dayData.windDeg)} wind · {bh.w} mph</div>
+                  <div style={{...mono,fontSize:9,color:C.muted,marginTop:8,lineHeight:1.7}}>{dirRec.detail}</div>
                 </div>
+              </div>
+              <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${C.border}`,...mono,fontSize:8,color:C.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:C.greenDim,fontSize:10}}>⚡</span>Run into the headwind while fresh — earn your tailwind on the way home.
+              </div>
+            </div>
+          </div>
+        )}
 
-                {/* 5 metric tiles — equal size, equidistant */}
-                <div style={{display:"flex",gap:8,marginTop:22}}>
-                  {[
-                    {icon:"🌡",label:"Temp",   value:displayTemp(bh.t,tu),       color:sc(bh.bd.temperature,T)},
-                    {icon:"🌧",label:"Precip",   value:`${bh.p}%`,                 color:sc(bh.bd.precipitation,T)},
-                    {icon:"💨",label:"Wind",   value:`${bh.w}mph`,               color:sc(bh.bd.wind,T)},
-                    {icon:"💚",label:"AQI",    value:aqiLabel(bh.aqi||40).l,     color:aqC(bh.aqi||40,T)},
-                    {icon:"🌿",label:"Pollen", value:polLabel(bh.pollen||0).l,   color:polC(bh.pollen||0,T)},
-                  ].map(({icon,label,value,color})=>(
-                    <div key={label} style={{flex:1,background:T.surface2,borderRadius:10,border:`1px solid ${T.border2}`,padding:"10px 4px",textAlign:"center",display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
-                      <div style={{fontSize:15}}>{icon}</div>
-                      <div style={{...mono,fontSize:8,color:T.muted,letterSpacing:1,textTransform:"uppercase"}}>{label}</div>
-                      <div style={{...mono,fontSize:11,color,fontWeight:500,letterSpacing:0.5,lineHeight:1.1}}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Why this window — moved above bars */}
-                {(()=>{const why=getWhyExplainer(bh,best);return(
-                  <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"flex-start",gap:10}}>
-                    <span style={{color:col,fontSize:15,flexShrink:0,marginTop:1}}>💬</span>
-                    <div>
-                      <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:5}}>Why this window?</div>
-                      <div style={{...mono,fontSize:11,color:T.text,lineHeight:1.7}}>{why}</div>
-                    </div>
-                  </div>
-                );})()}
-
-                {/* Factor bars */}
-                <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.border}`}}>
-                  {[
-                    {key:"temperature",  label:"Temp",    icon:"🌡",actual:displayTemp(bh.t,tu)},
-                    {key:"precipitation",label:"Precip",  icon:"🌧",actual:`${bh.p}%`},
-                    {key:"wind",         label:"Wind",    icon:"💨",actual:`${bh.w} mph`},
-                    {key:"aqi",          label:"AQI",     icon:"💚",actual:aqiLabel(bh.aqi||40).l},
-                    {key:"pollen",       label:"Pollen",  icon:"🌿",actual:polLabel(bh.pollen||0).l},
-                    {key:"uv",           label:"UV",      icon:"☀️",actual:`${bh.u}`},
-                    {key:"humidity",     label:"Humidity",icon:"💧",actual:`${bh.h}%`},
-                  ].map(({key,label,icon,actual},fi)=>{
-                    const sv=bh.bd[key],fc=sc(sv,T);
-                    return(
-                      <div key={key} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}>
-                        <div style={{fontSize:12,width:18,flexShrink:0}}>{icon}</div>
-                        <div style={{...mono,fontSize:10,color:T.muted,width:62,letterSpacing:1,flexShrink:0}}>{label}</div>
-                        <div style={{flex:1,background:T.surface2,borderRadius:2,height:3,overflow:"hidden"}}>
-                          <div style={{width:visible?`${sv}%`:"0%",height:"100%",background:`linear-gradient(90deg,${T.greenDeep},${fc})`,borderRadius:2,boxShadow:`0 0 8px ${fc}50`,transition:"width 1.1s cubic-bezier(0.4,0,0.2,1)",transitionDelay:`${300+fi*70}ms`}}/>
-                        </div>
-                        <div style={{...mono,fontSize:10,color:fc,width:20,textAlign:"right",fontWeight:500}}>{sv}</div>
-                        <div style={{...mono,fontSize:10,color:T.muted,width:54,textAlign:"right"}}>{actual}</div>
+        {/* ── Outfit ── */}
+        {outfit&&(
+          <div className={`fade ${visible?"in":""}`} style={{...dd(300),marginBottom:16}}>
+            <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}40,transparent)`}}/>
+              <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>What to Wear · Best Window</div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+                <div style={{...cond,fontSize:22,fontWeight:700,color:C.text,letterSpacing:1}}>Feels like {displayTemp(outfit.feel,tu)}</div>
+                <div style={{...mono,fontSize:9,color:col,letterSpacing:1}}>{outfit.feelPhrase}</div>
+                {outfit.rainy&&<span style={{...mono,fontSize:8,color:"#6ab0e8",background:"#6ab0e818",border:"1px solid #6ab0e840",borderRadius:4,padding:"2px 8px",letterSpacing:1}}>RAIN</span>}
+                {outfit.uvHigh&&<span style={{...mono,fontSize:8,color:"#e8c84a",background:"#e8c84a18",border:"1px solid #e8c84a40",borderRadius:4,padding:"2px 8px",letterSpacing:1}}>HIGH UV</span>}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {outfit.layers.map(({slot,icon,item,note})=>(
+                  <div key={slot} style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                    <div style={{fontSize:18,width:26,flexShrink:0,lineHeight:1.2}}>{icon}</div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+                        <span style={{...mono,fontSize:8,color:C.muted,letterSpacing:1.5,textTransform:"uppercase",width:52,flexShrink:0}}>{slot}</span>
+                        <span style={{...mono,fontSize:11,color:C.text}}>{item}</span>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Share */}
-                <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${T.border}`,display:"flex",gap:10,alignItems:"center"}}>
-                  <button onClick={async()=>{const r=await doShare(bh,best,winStart,dayData.label,location?.name||"NYC",tu);if(r){setShareMsg(r==="copied"?"Copied!":"Shared! 🎉");setTimeout(()=>setShareMsg(null),2500);}}} style={{...mono,fontSize:11,color:T.green,background:`${T.green}15`,border:`1px solid ${T.green}40`,borderRadius:8,padding:"10px 18px",cursor:"pointer",letterSpacing:1,flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📤 Share this forecast</button>
-                  {shareMsg&&<div style={{...mono,fontSize:10,color:T.green,letterSpacing:1,flexShrink:0}}>{shareMsg}</div>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Feedback card */}
-          {bh&&(
-            <div className={`fade ${visible?"in":""}`} style={{...dd(140),marginBottom:16}}>
-              <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"18px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{...mono,fontSize:10,color:T.muted,letterSpacing:1}}>Was this forecast helpful?</div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  {feedback&&<div style={{...mono,fontSize:9,color:T.green,marginRight:4}}>{feedback==="up"?"Thanks! 🎉":"Got it, thanks"}</div>}
-                  {[{v:"up",e:"👍"},{v:"down",e:"👎"}].map(({v,e})=>(
-                    <button key={v} onClick={()=>{setFeedback(f=>f===v?null:v);if(feedback!==v)submitFeedback(v,bh,best,location?.name,view);}}
-                      style={{fontSize:20,background:feedback===v?`${T.green}20`:"none",border:`1px solid ${feedback===v?T.green:T.border2}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",transition:"all .15s",lineHeight:1}}>
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bad day */}
-          {!bh&&hours.length>0&&(()=>{
-            const msg=BAD_DAY_MSGS[new Date().getDate()%BAD_DAY_MSGS.length];
-            const worstScore=Math.max(...hours.map(h=>h.score));
-            return(
-              <div className={`fade ${visible?"in":""}`} style={{...dd(120),marginBottom:16}}>
-                <div style={{background:T.surface,borderRadius:20,border:`1px solid ${T.border2}`,padding:"40px 28px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-                  <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${T.skip}40,transparent)`}}/>
-                  <div style={{fontSize:56,marginBottom:16}}>{msg.emoji}</div>
-                  <div style={{...cond,fontSize:34,fontWeight:700,color:T.text,letterSpacing:3,textTransform:"uppercase",lineHeight:1,marginBottom:8}}>{msg.title}</div>
-                  <div style={{...mono,fontSize:12,color:T.muted,lineHeight:1.8,marginBottom:20}}>{msg.sub}</div>
-                  <div style={{...mono,fontSize:10,color:T.dim}}>Best score today: <span style={{color:T.skip}}>{worstScore}/100</span></div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Direction */}
-          {bh&&(
-            <div className={`fade ${visible?"in":""}`} style={{...dd(220),marginBottom:16}}>
-              <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}40,transparent)`}}/>
-                <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>Start Direction</div>
-                <div style={{display:"flex",gap:16,alignItems:"center"}}>
-                  <WindRose windDeg={dayData.windDeg} color={col}/>
-                  <div style={{flex:1}}>
-                    <div style={{...cond,fontSize:24,fontWeight:700,color:T.text,letterSpacing:2,lineHeight:1,textTransform:"uppercase"}}>{dirRec.headline}</div>
-                    <div style={{...mono,fontSize:10,color:col,marginTop:6}}>{compassLabel(dayData.windDeg)} wind · {bh.w} mph</div>
-                    <div style={{...mono,fontSize:10,color:T.muted,marginTop:8,lineHeight:1.7}}>{dirRec.detail}</div>
-                  </div>
-                </div>
-                <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`,...mono,fontSize:9,color:T.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:T.greenDim,fontSize:11}}>⚡</span>Run into the headwind while fresh — earn your tailwind on the way home.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Outfit */}
-          {outfit&&(
-            <div className={`fade ${visible?"in":""}`} style={{...dd(300),marginBottom:16}}>
-              <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:`linear-gradient(90deg,transparent,${col}40,transparent)`}}/>
-                <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:14}}>What to Wear</div>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-                  <div style={{...cond,fontSize:24,fontWeight:700,color:T.text,letterSpacing:1}}>Feels like {displayTemp(outfit.feel,tu)}</div>
-                  <div style={{...mono,fontSize:10,color:col,letterSpacing:1}}>{outfit.feelPhrase}</div>
-                  {outfit.rainy&&<span style={{...mono,fontSize:9,color:"#4a90d8",background:"#4a90d818",border:"1px solid #4a90d840",borderRadius:4,padding:"3px 9px",letterSpacing:1}}>RAIN</span>}
-                  {outfit.uvHigh&&<span style={{...mono,fontSize:9,color:"#c09010",background:"#c0901018",border:"1px solid #c0901040",borderRadius:4,padding:"3px 9px",letterSpacing:1}}>HIGH UV</span>}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {outfit.layers.map(({slot,icon,item,note})=>(
-                    <div key={slot} style={{display:"flex",alignItems:"flex-start",gap:12}}>
-                      <div style={{fontSize:18,width:26,flexShrink:0,lineHeight:1.2}}>{icon}</div>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-                          <span style={{...mono,fontSize:9,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",width:52,flexShrink:0}}>{slot}</span>
-                          <span style={{...mono,fontSize:12,color:T.text}}>{item}</span>
-                        </div>
-                        <div style={{...mono,fontSize:9,color:T.muted,marginTop:2,marginLeft:60}}>{note}</div>
-                      </div>
+                      <div style={{...mono,fontSize:8,color:C.muted,marginTop:2,marginLeft:60}}>{note}</div>
                     </div>
-                  ))}
-                </div>
-                <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${T.border}`,...mono,fontSize:9,color:T.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:T.greenDim,fontSize:11}}>💡</span>Dress for 15–20° warmer than feel-like — your body heat does the rest.
-                </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.border}`,...mono,fontSize:8,color:C.text,letterSpacing:1,lineHeight:1.8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:C.greenDim,fontSize:10}}>💡</span>Dress for 15–20° warmer than feel-like — your body heat does the rest.
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Time-of-day table */}
-          <div className={`fade ${visible?"in":""}`} style={{...dd(380),marginBottom:16}}>
-            <div style={{background:T.surface,borderRadius:16,border:`1px solid ${T.border2}`,padding:"20px"}}>
-              <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Conditions by Time of Day</div>
-              {[
-                {label:"Early Morning",icon:"🌅",range:[5,8]},
-                {label:"Morning",      icon:"☀️",range:[9,12]},
-                {label:"Afternoon",    icon:"🌤",range:[13,17]},
-                {label:"Evening",      icon:"🌆",range:[18,21]},
-              ].map(({label,icon,range})=>{
-                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]);
-                if(group.length===0)return null;
-                const bestH=group.reduce((a,b)=>a.score>b.score?a:b);
-                const avgScore=Math.round(group.reduce((s,h)=>s+h.score,0)/group.length);
-                const fc=sc(bestH.score,T);
-                const isBestWindow=best&&hours[best.startIdx]?.hr>=range[0]&&hours[best.startIdx]?.hr<=range[1];
+        {/* ── Hourly bar chart ── */}
+        <div className={`fade ${visible?"in":""}`} style={{...dd(380),marginBottom:16}}>
+          <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border2}`,padding:"20px 20px 14px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>Hourly Score</div>
+              <div style={{display:"flex",gap:12}}>
+                <span style={{...mono,fontSize:8,color:"#e8c060",letterSpacing:1}}>🌅 {fmt12(Math.round(sun.sunrise))}</span>
+                <span style={{...mono,fontSize:8,color:"#e08040",letterSpacing:1}}>🌇 {fmt12(Math.round(sun.sunset))}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:3,alignItems:"flex-end",height:60}}>
+              {hours.map((h,i)=>{
+                const isBest=best&&(i===best.startIdx||i===best.startIdx+1),fc=sc(h.score),barH=Math.max(4,(h.score/100)*50),isNight=h.hr<sun.sunrise||h.hr>=sun.sunset;
                 return(
-                  <div key={label} style={{marginBottom:12,background:isBestWindow?`${fc}10`:T.surface2,borderRadius:10,border:`1px solid ${isBestWindow?fc+"40":T.border}`,padding:"12px 14px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:15}}>{icon}</span>
-                        <div>
-                          <div style={{...mono,fontSize:10,color:isBestWindow?fc:T.text,fontWeight:500,letterSpacing:1}}>{label}</div>
-                          <div style={{...mono,fontSize:9,color:T.dim,marginTop:2}}>{fmt12(range[0])} – {fmt12(range[1]+1)}</div>
-                        </div>
-                      </div>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{...mono,fontSize:15,color:fc,fontWeight:500}}>{avgScore}</div>
-                        <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>avg</div>
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {group.map(h=>{
-                        const hfc=sc(h.score,T);
-                        const isThisBest=best&&h.hr===hours[best.startIdx]?.hr;
-                        const isExpanded=expandedHour===h.hr;
-                        return(
-                          <div key={h.hr} style={{width:"100%"}}>
-                            {/* Tappable hour pill */}
-                            <div
-                              onClick={()=>setExpandedHour(isExpanded?null:h.hr)}
-                              style={{background:isThisBest?`${hfc}20`:T.surface,borderRadius:isExpanded?"6px 6px 0 0":6,padding:"6px 9px",border:`1px solid ${isExpanded?hfc+"80":isThisBest?hfc+"60":T.border}`,minWidth:54,cursor:"pointer",display:"inline-flex",gap:16,alignItems:"center",userSelect:"none",width:"100%",justifyContent:"space-between"}}>
-                              <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                                <div>
-                                  <div style={{...mono,fontSize:9,color:isThisBest||isExpanded?hfc:T.muted}}>{fmt12(h.hr)}</div>
-                                  <div style={{...mono,fontSize:11,color:hfc,fontWeight:500,marginTop:1}}>{h.score}</div>
-                                  <div style={{...mono,fontSize:8,color:T.dim,marginTop:1}}>{displayTemp(h.t,tu)}</div>
-                                </div>
-                                {isThisBest&&<div style={{...mono,fontSize:8,color:hfc,letterSpacing:1}}>★ BEST</div>}
-                              </div>
-                              <div style={{...mono,fontSize:10,color:T.dim}}>{isExpanded?"▲":"▼"}</div>
-                            </div>
-                            {/* Expanded comparison panel */}
-                            {isExpanded&&(()=>{
-                              const metrics=[
-                                {label:"Temp",    val:displayTemp(h.t,tu),    bestVal:bh?displayTemp(bh.t,tu):"-",    score:h.bd.temperature,   bestScore:bh?.bd.temperature},
-                                {label:"Precip",  val:`${h.p}%`,              bestVal:bh?`${bh.p}%`:"-",              score:h.bd.precipitation, bestScore:bh?.bd.precipitation},
-                                {label:"Wind",    val:`${h.w}mph`,            bestVal:bh?`${bh.w}mph`:"-",            score:h.bd.wind,          bestScore:bh?.bd.wind},
-                                {label:"AQI",     val:aqiLabel(h.aqi||40).l,  bestVal:bh?aqiLabel(bh.aqi||40).l:"-", score:h.bd.aqi,            bestScore:bh?.bd.aqi},
-                                {label:"Pollen",  val:polLabel(h.pollen||0).l,bestVal:bh?polLabel(bh.pollen||0).l:"-",score:h.bd.pollen,        bestScore:bh?.bd.pollen},
-                              ];
-                              const hfc2=sc(h.score,T);
-                              const bfc=bh?sc(best.avgScore,T):T.dim;
-                              return(
-                                <div style={{background:T.surface2,borderRadius:"0 0 8px 8px",border:`1px solid ${hfc2}80`,borderTop:"none",padding:"12px 10px"}}>
-                                  {/* Header row */}
-                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8}}>
-                                    <div style={{...mono,fontSize:8,color:T.dim,letterSpacing:1}}></div>
-                                    <div style={{...mono,fontSize:8,color:hfc2,letterSpacing:1,textAlign:"center"}}>{fmt12(h.hr)}</div>
-                                    <div style={{...mono,fontSize:8,color:bfc,letterSpacing:1,textAlign:"center"}}>{bh?`${fmt12(winStart)} ★`:"Best"}</div>
-                                  </div>
-                                  {/* Score row */}
-                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${T.border}`}}>
-                                    <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:0.5}}>Score</div>
-                                    <div style={{...mono,fontSize:12,color:hfc2,fontWeight:700,textAlign:"center"}}>{h.score}</div>
-                                    <div style={{...mono,fontSize:12,color:bfc,fontWeight:700,textAlign:"center"}}>{bh?best.avgScore:"—"}</div>
-                                  </div>
-                                  {/* Metric rows */}
-                                  {metrics.map(({label,val,bestVal,score,bestScore})=>{
-                                    const mc=sc(score,T);
-                                    const bc=bestScore!=null?sc(bestScore,T):T.dim;
-                                    const diff=bestScore!=null?bestScore-score:null;
-                                    return(
-                                      <div key={label} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:7,alignItems:"center"}}>
-                                        <div style={{...mono,fontSize:9,color:T.muted,letterSpacing:0.5}}>{label}</div>
-                                        <div style={{...mono,fontSize:10,color:mc,textAlign:"center",fontWeight:500}}>{val}</div>
-                                        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-                                          <div style={{...mono,fontSize:10,color:bc,fontWeight:500}}>{bestVal}</div>
-                                          {diff!=null&&diff!==0&&<div style={{...mono,fontSize:7,color:diff>0?T.green:T.skip}}>{diff>0?`+${diff}`:diff}</div>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div key={h.hr} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <div className="hbar" title={`${fmt12(h.hr)}: ${h.score}/100`} style={{width:"100%",height:barH,background:isBest?`linear-gradient(180deg,${fc},${fc}80)`:`${fc}${isNight?"16":"26"}`,borderRadius:"2px 2px 0 0",boxShadow:isBest?`0 0 10px ${fc}50`:"none",opacity:isNight?0.55:1}}/>
+                    <div style={{...mono,fontSize:7,color:isBest?C.text:C.dim,whiteSpace:"nowrap"}}>{h.hr%4===1?fmt12(h.hr):""}</div>
                   </div>
                 );
               })}
             </div>
           </div>
+        </div>
 
-          {/* Legend */}
-          <div className={`fade ${visible?"in":""}`} style={{...dd(500),marginTop:8,display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-            {[["great","80+"],["good","65+"],["fair","45+"],["skip","<45"]].map(([k,lbl])=>(
-              <div key={lbl} style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:7,height:7,borderRadius:"50%",background:T[k],boxShadow:`0 0 5px ${T[k]}`}}/>
-                <span style={{...mono,fontSize:9,color:T.dim,letterSpacing:1}}>{lbl}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* About footer — visually subtle, content-rich for SEO */}
-          <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:40,paddingTop:28,borderTop:`1px solid ${T.border}`,opacity:0.7}}>
-            <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",marginBottom:16}}>
-              <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>temp</span>
-              <span style={{...cond,fontSize:22,fontWeight:700,fontStyle:"italic",color:T.green,letterSpacing:1,marginLeft:2,marginRight:6,textTransform:"uppercase",lineHeight:1}}>RUN</span>
-              <span style={{...cond,fontSize:14,fontWeight:700,color:T.muted,letterSpacing:3,textTransform:"uppercase"}}>ture</span>
-            </div>
-
-            {/* SEO-rich description paragraphs — small and dim so real users skip past them */}
-            <div style={{maxWidth:360,margin:"0 auto",display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
-              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
-                tempRUNture is a free running weather forecast app that scores every hour of the day based on seven factors: rain probability, wind speed, temperature, air quality index (AQI), pollen count, humidity, and UV index. It tells you the best time to run today and tomorrow — with a score out of 100, an outfit recommendation, and advice on which direction to start based on wind.
-              </p>
-              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
-                Unlike a standard weather app, tempRUNture is built specifically for runners. It weighs each weather factor by how much it actually affects a run, calculates a wind chill-adjusted feels-like temperature, and factors in local air quality and pollen data from Open-Meteo. It works for runners anywhere in the world — just share your location and get an instant forecast.
-              </p>
-              <p style={{...mono,fontSize:8,color:T.dim,lineHeight:1.9,textAlign:"center",margin:0}}>
-                Common questions it answers: What is the best time to run today? Is it too windy to run outside? What should I wear for my run? Is air quality good enough to run? What is the pollen count for running today? When is the coolest time to run?
-              </p>
-            </div>
-
-            <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
-              {[{label:"Free forever",icon:"✓"},{label:"Works anywhere",icon:"🌍"},{label:"No account needed",icon:"✓"},{label:"Live weather data",icon:"⚡"},{label:"Air quality & pollen",icon:"💚"}].map(({label,icon})=>(
-                <div key={label} style={{...mono,fontSize:8,color:T.muted,letterSpacing:0.5,display:"flex",alignItems:"center",gap:4}}>
-                  <span style={{color:T.green}}>{icon}</span>{label}
+        {/* ── Grouped time-of-day table ── */}
+        <div className={`fade ${visible?"in":""}`} style={{...dd(460),marginBottom:16}}>
+          <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border2}`,padding:"20px"}}>
+            <div style={{...mono,fontSize:8,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Conditions by Time of Day</div>
+            {[
+              {label:"Early Morning",icon:"🌅",range:[5,8]},
+              {label:"Morning",      icon:"☀️", range:[9,12]},
+              {label:"Afternoon",    icon:"🌤",range:[13,17]},
+              {label:"Evening",      icon:"🌆",range:[18,21]},
+            ].map(({label,icon,range})=>{
+              const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]);
+              if(group.length===0)return null;
+              const bestH=group.reduce((a,b)=>a.score>b.score?a:b);
+              const avgScore=Math.round(group.reduce((s,h)=>s+h.score,0)/group.length);
+              const fc=sc(bestH.score);
+              const isBestWindow=best&&(best.startIdx<hours.length)&&hours[best.startIdx].hr>=range[0]&&hours[best.startIdx].hr<=range[1];
+              return(
+                <div key={label} style={{marginBottom:12,background:isBestWindow?`${fc}08`:C.surface2,borderRadius:10,border:`1px solid ${isBestWindow?fc+"30":C.border}`,padding:"12px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:14}}>{icon}</span>
+                      <div>
+                        <div style={{...mono,fontSize:9,color:isBestWindow?fc:C.text,fontWeight:500,letterSpacing:1}}>{label}</div>
+                        <div style={{...mono,fontSize:8,color:C.dim,marginTop:2}}>{fmt12(range[0])} – {fmt12(range[1]+1)}</div>
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{...mono,fontSize:14,color:fc,fontWeight:500}}>{avgScore}</div>
+                      <div style={{...mono,fontSize:7,color:C.dim,marginTop:1}}>avg score</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {group.map(h=>{
+                      const hfc=sc(h.score);
+                      const isThisBest=best&&h.hr===hours[best.startIdx]?.hr;
+                      const isExpanded=expandedHour===h.hr;
+                      return(
+                        <div key={h.hr} style={{width:"100%"}}>
+                          <div onClick={()=>setExpandedHour(isExpanded?null:h.hr)}
+                            style={{background:isThisBest?`${hfc}20`:C.surface,borderRadius:isExpanded?"6px 6px 0 0":6,padding:"6px 9px",border:`1px solid ${isExpanded?hfc+"80":isThisBest?hfc+"50":C.border}`,cursor:"pointer",display:"flex",gap:12,alignItems:"center",justifyContent:"space-between",width:"100%",userSelect:"none"}}>
+                            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                              <div>
+                                <div style={{...mono,fontSize:8,color:isThisBest||isExpanded?hfc:C.muted}}>{fmt12(h.hr)}</div>
+                                <div style={{...mono,fontSize:10,color:hfc,fontWeight:500,marginTop:1}}>{h.score}</div>
+                                <div style={{...mono,fontSize:7,color:C.dim,marginTop:1}}>{displayTemp(h.t,tu)}</div>
+                              </div>
+                              {isThisBest&&<div style={{...mono,fontSize:8,color:hfc,letterSpacing:1}}>★ BEST</div>}
+                            </div>
+                            <div style={{...mono,fontSize:10,color:C.dim}}>{isExpanded?"▲":"▼"}</div>
+                          </div>
+                          {isExpanded&&bh&&(()=>{
+                            const rows=[
+                              {label:"Score", val:h.score,        bestVal:best.avgScore,  isNum:true},
+                              {label:"Temp",  val:displayTemp(h.t,tu), bestVal:displayTemp(bh.t,tu), isNum:false},
+                              {label:"Precip",val:`${h.p}%`,      bestVal:`${bh.p}%`,     isNum:false},
+                              {label:"Wind",  val:`${h.w}mph`,    bestVal:`${bh.w}mph`,   isNum:false},
+                              {label:"AQI",   val:aqiLabel(h.aqi||40).l, bestVal:aqiLabel(bh.aqi||40).l, isNum:false},
+                              {label:"Pollen",val:polLabel(h.pollen||0).l, bestVal:polLabel(bh.pollen||0).l, isNum:false},
+                            ];
+                            return(
+                              <div style={{background:C.surface2,borderRadius:"0 0 6px 6px",border:`1px solid ${hfc}80`,borderTop:"none",padding:"10px"}}>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:6}}>
+                                  <div style={{...mono,fontSize:7,color:C.dim}}></div>
+                                  <div style={{...mono,fontSize:7,color:hfc,textAlign:"center"}}>{fmt12(h.hr)}</div>
+                                  <div style={{...mono,fontSize:7,color:sc(best.avgScore),textAlign:"center"}}>{fmt12(bh.hr)} ★</div>
+                                </div>
+                                {rows.map(({label,val,bestVal,isNum})=>(
+                                  <div key={label} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:5,alignItems:"center"}}>
+                                    <div style={{...mono,fontSize:8,color:C.muted}}>{label}</div>
+                                    <div style={{...mono,fontSize:9,color:isNum?sc(val):C.text,textAlign:"center",fontWeight:500}}>{val}</div>
+                                    <div style={{...mono,fontSize:9,color:isNum?sc(bestVal):C.text,textAlign:"center",fontWeight:500}}>{bestVal}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            <div style={{...mono,fontSize:7,color:T.dim,textAlign:"center",opacity:0.5,letterSpacing:1}}>
-              © {new Date().getFullYear()} temprunture.com · Free running weather forecast
-            </div>
+              );
+            })}
           </div>
-  
+        </div>
+
+        {/* ── Legend & footer ── */}
+        <div className={`fade ${visible?"in":""}`} style={{...dd(540),marginTop:8,display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
+          {[[C.great,"80+"],[C.good,"65+"],[C.fair,"45+"],[C.skip,"<45"]].map(([fc,lbl])=>(
+            <div key={lbl} style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:fc,boxShadow:`0 0 5px ${fc}`}}/>
+              <span style={{...mono,fontSize:8,color:C.dim,letterSpacing:1}}>{lbl}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:40,paddingTop:24,borderTop:`1px solid ${C.border}`,opacity:0.6}}>
+          <div style={{...mono,fontSize:8,color:C.dim,textAlign:"center",lineHeight:1.9,maxWidth:340,margin:"0 auto",marginBottom:12}}>
+            tempRUNture scores every hour based on rain, wind, temperature, air quality, pollen and UV to find your best window to run. Free, no account needed, works anywhere in the world.
+          </div>
+          <div style={{...mono,fontSize:7,color:C.dim,textAlign:"center",letterSpacing:1}}>© {new Date().getFullYear()} temprunture.com</div>
         </div>
       </div>
-    </ThemeCtx.Provider>
+    </div>
   );
 }

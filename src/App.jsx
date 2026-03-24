@@ -1015,7 +1015,7 @@ export default function App(){
                 {label:"Afternoon",    icon:"🌤",range:[13,17]},
                 {label:"Evening",      icon:"🌆",range:[18,21]},
               ].map(({label,icon,range})=>{
-                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]&&(view!=="today"||h.hr>=nowHour));
+                const group=hours.filter(h=>h.hr>=range[0]&&h.hr<=range[1]&&(view!=="today"||nowHour==null||h.hr>=nowHour-1));
                 if(group.length===0)return null;
                 const bestH=group.reduce((a,b)=>a.score>b.score?a:b);
                 const avgScore=Math.round(group.reduce((s,h)=>s+h.score,0)/group.length);

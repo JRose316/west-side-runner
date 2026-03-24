@@ -776,10 +776,10 @@ export default function App(){
   const bh=best?(best.startData||hours[best.startIdx]):null;
   const col=bh?sc(best.avgScore,T):T.green;
   const runMins=Math.round(settings.distance*settings.pace/60);
-  const retDecHr=bh?winStart+runMins/60:0;
-  const retStr=fmt15(retDecHr);
   const winStart=best?.decHr!=null?best.decHr:(bh?.hr||0);
   const winEnd=winStart+2;
+  const retDecHr=bh?winStart+runMins/60:0;
+  const retStr=fmt15(retDecHr);
   const dirRec=bh?getDirRec(dayData.windDeg,bh.w):{headline:"",detail:""};
   const outfit=bh?getOutfit(bh):null;
   const tu=settings.tempUnit||"F";

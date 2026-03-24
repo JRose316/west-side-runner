@@ -148,8 +148,10 @@ function fmt15(decHr){
 function processHours(arr,sunTimes,daylightOnly,currentHour){
   const hours=arr.map(h=>{const s=scoreHour(h);return{...h,score:s.total,bd:s.bd};});
   let best=null;
-  // Check every 15-minute mark for the best 2-hour window
-  for(let i=0;i<hours.length-2;i++){
+  // Check every 15-minute mark for the best 2-hour window.
+  // Loop goes to hours.length-1 so we can start a window at any hour.
+  // The end point 2hrs later clamps to the last available hour if needed.
+  for(let i=0;i<hours.length-1;i++){
     for(let q=0;q<4;q++){
       const t=q/4;
       const decHr=hours[i].hr+t;
@@ -160,11 +162,13 @@ function processHours(arr,sunTimes,daylightOnly,currentHour){
         const endHr=decHr+2;
         if(decHr<sunTimes.sunrise||endHr>sunTimes.sunset)continue;
       }
-      // Score start point (blend of hour i and i+1)
-      const startBlend=interpHour(hours[i],hours[i+1],t);
-      // Score end point 2hrs later (blend of hour i+2 and i+3 if available)
-      const endIdx=i+2,endT=t;
-      const endBlend=endIdx<hours.length-1?interpHour(hours[endIdx],hours[endIdx+1],endT):hours[Math.min(endIdx,hours.length-1)];
+      // Score start point — blend between this hour and the next
+      const startBlend=interpHour(hours[i],hours[Math.min(i+1,hours.length-1)],t);
+      // Score end point 2hrs later — clamp if near end of data
+      const endIdx=Math.min(i+2,hours.length-1);
+      const endBlend=endIdx<hours.length-1
+        ?interpHour(hours[endIdx],hours[endIdx+1],t)
+        :hours[endIdx];
       const s1=scoreHour(startBlend),s2=scoreHour(endBlend);
       const avg=Math.round((s1.total+s2.total)/2);
       if(!best||avg>best.avgScore)best={startIdx:i,startQ:q,avgScore:avg,decHr,startData:{...startBlend,score:s1.total,bd:s1.bd}};

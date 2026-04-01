@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, createContext, useContext } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 // ─── Themes ────────────────────────────────────────────────────────────────────
 const DARK = {
@@ -1137,6 +1138,7 @@ export default function App(){
   
         </div>
       </div>
+      <Analytics />
     </ThemeCtx.Provider>
   );
 }
